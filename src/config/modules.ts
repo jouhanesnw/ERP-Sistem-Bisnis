@@ -17,6 +17,8 @@ export const MODULES: ModuleDef[] = [
       { label: 'Rekening Kas', href: '/kas/rekening' },
       { label: 'Kas Masuk', href: '/kas/masuk' },
       { label: 'Kas Keluar', href: '/kas/keluar' },
+      { label: 'Transfer', href: '/kas/transfer' },
+      { label: 'Kategori', href: '/kas/kategori' },
       { label: 'Laporan Kas', href: '/kas/laporan' },
     ],
   },
