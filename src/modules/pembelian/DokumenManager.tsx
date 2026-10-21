@@ -1,0 +1,245 @@
+'use client'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { Plus, Trash2 } from 'lucide-react'
+import { supabaseBrowser } from '@/lib/supabase/client'
+import { addDays, isoDate, rupiah, tglID } from '@/lib/format'
+import type { Dokumen, Item, Jenis, Pemasok, PbPerm, RekeningPilihan } from './types'
+
+const LABEL: Record<string, string> = { draft: 'Draft', dipesan: 'Dipesan', diterima: 'Diterima', terbit: 'Terbit', batal: 'Batal' }
+function statusLabel(d: Dokumen) {
+  if (d.jenis === 'faktur' && d.status === 'terbit') {
+    if (d.sisa <= 0) return 'Lunas'
+    if (d.terbayar > 0) return 'Dibayar sebagian'
+    if (d.batas_tanggal && d.batas_tanggal < isoDate(new Date())) return 'Lewat jatuh tempo'
+    return 'Belum dibayar'
+  }
+  return LABEL[d.status] ?? d.status
+}
+
+export default function DokumenManager({ companyId, jenis, pemasok, rekening, perm }: {
+  companyId: string; jenis: Jenis; pemasok: Pemasok[]; rekening: RekeningPilihan[]; perm: PbPerm
+}) {
+  const sb = useMemo(() => supabaseBrowser(), [])
+  const router = useRouter()
+  const isFaktur = jenis === 'faktur'
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
+  const [filter, setFilter] = useState('semua')
+  const [rows, setRows] = useState<Dokumen[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [form, setForm] = useState<{ doc: Dokumen | null; items: Item[] } | null>(null)
+  const [bayar, setBayar] = useState<Dokumen | null>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    let q = sb.from('pb_dokumen_v').select('*').eq('company_id', companyId).eq('jenis', jenis)
+      .order('tanggal', { ascending: false }).order('nomor', { ascending: false }).limit(500)
+    if (from) q = q.gte('tanggal', from)
+    if (to) q = q.lte('tanggal', to)
+    const { data, error } = await q
+    setLoading(false)
+    if (error) return setError(error.message)
+    setError(null); setRows((data ?? []) as Dokumen[])
+  }, [sb, companyId, jenis, from, to])
+  useEffect(() => { load() }, [load])
+
+  const filters: [string, string][] = isFaktur
+    ? [['semua', 'Semua'], ['draft', 'Draft'], ['belum', 'Belum lunas'], ['lunas', 'Lunas'], ['batal', 'Batal']]
+    : [['semua', 'Semua'], ['draft', 'Draft'], ['dipesan', 'Dipesan'], ['diterima', 'Diterima'], ['batal', 'Batal']]
+  const visible = rows.filter((d) => {
+    if (filter === 'semua') return true
+    if (filter === 'belum') return d.status === 'terbit' && d.sisa > 0
+    if (filter === 'lunas') return d.status === 'terbit' && d.sisa <= 0
+    return d.status === filter
+  })
+  const utang = rows.filter((d) => d.jenis === 'faktur' && d.status === 'terbit').reduce((s, d) => s + Number(d.sisa), 0)
+  const pemasokAktif = pemasok.filter((p) => p.aktif)
+
+  async function openForm(d: Dokumen | null) {
+    if (!d) return setForm({ doc: null, items: [{ deskripsi: '', qty: 1, harga: '' }] })
+    const { data, error } = await sb.from('pb_dokumen_item').select('deskripsi, qty, harga').eq('dokumen_id', d.id).order('urutan')
+    if (error) return setError(error.message)
+    setForm({ doc: d, items: (data ?? []) as Item[] })
+  }
+  async function setStatus(d: Dokumen, status: string, ask?: string) {
+    if (ask && !confirm(ask)) return
+    const { error } = await sb.from('pb_dokumen').update({ status }).eq('id', d.id)
+    if (error) return setError(error.message)
+    load()
+  }
+  async function remove(d: Dokumen) {
+    if (!confirm('Hapus ' + d.nomor + '?')) return
+    const { error } = await sb.from('pb_dokumen').delete().eq('id', d.id)
+    if (error) return setError(error.message)
+    load()
+  }
+  async function keFaktur(d: Dokumen) {
+    if (!confirm('Buat faktur dari ' + d.nomor + '?')) return
+    const { error } = await sb.rpc('pb_pesanan_ke_faktur', { p_id: d.id })
+    if (error) return setError(error.message)
+    router.push('/pembelian/faktur')
+    load()
+  }
+  const canEdit = (d: Dokumen) => perm.edit && !(isFaktur && (d.status === 'batal' || Number(d.terbayar) > 0))
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">{isFaktur ? 'Faktur Pembelian' : 'Pesanan Pembelian'}</h1>
+          {isFaktur && <p className="text-sm text-ink/60">Utang belum dibayar: <b className="text-ink">{rupiah(utang)}</b></p>}
+        </div>
+        {perm.create && (pemasokAktif.length
+          ? <button className="btn btn-primary ml-auto" onClick={() => openForm(null)}><Plus size={16} />Buat {isFaktur ? 'faktur' : 'pesanan'}</button>
+          : <Link href="/pembelian/pemasok" className="btn ml-auto">Tambah pemasok dulu</Link>)}
+      </div>
+      <div className="card flex flex-wrap items-end gap-3 p-4">
+        <label className="text-sm">Dari<input type="date" className="input mt-1" value={from} onChange={(e) => setFrom(e.target.value)} /></label>
+        <label className="text-sm">Sampai<input type="date" className="input mt-1" value={to} onChange={(e) => setTo(e.target.value)} /></label>
+        <label className="text-sm">Status<select className="input mt-1" value={filter} onChange={(e) => setFilter(e.target.value)}>
+          {filters.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+        </select></label>
+        <p className="ml-auto text-sm text-ink/60">{visible.length} dokumen</p>
+      </div>
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      {form && <DokumenForm key={form.doc?.id ?? 'new'} sb={sb} companyId={companyId} jenis={jenis}
+        pemasok={pemasokAktif.concat(pemasok.filter((p) => !p.aktif && p.id === form.doc?.pemasok_id))}
+        doc={form.doc} items={form.items} onDone={() => { setForm(null); load() }} onCancel={() => setForm(null)} />}
+      {bayar && <BayarForm key={bayar.id} sb={sb} dokumen={bayar} rekening={rekening.filter((r) => r.aktif)}
+        onDone={() => { setBayar(null); load() }} onCancel={() => setBayar(null)} />}
+      <div className="card overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead><tr className="border-b border-line text-ink/60">
+            <th className="p-3 font-medium">Nomor</th><th className="p-3 font-medium">Pemasok</th>
+            <th className="p-3 font-medium">{isFaktur ? 'Jatuh tempo' : 'Estimasi tiba'}</th>
+            <th className="p-3 text-right font-medium">Total</th>{isFaktur && <th className="p-3 text-right font-medium">Sisa</th>}
+            <th className="p-3 font-medium">Status</th><th className="p-3" />
+          </tr></thead>
+          <tbody>
+            {visible.map((d) => (
+              <tr key={d.id} className="border-b border-line align-top last:border-0">
+                <td className="whitespace-nowrap p-3">{d.nomor}<span className="block text-xs text-ink/50">{tglID(d.tanggal)}{d.no_referensi ? ' · ' + d.no_referensi : ''}</span></td>
+                <td className="p-3">{d.pemasok_nama}</td><td className="whitespace-nowrap p-3">{d.batas_tanggal ? tglID(d.batas_tanggal) : '—'}</td>
+                <td className="p-3 text-right tabular-nums">{rupiah(Number(d.total))}</td>
+                {isFaktur && <td className="p-3 text-right tabular-nums">{d.status === 'terbit' ? rupiah(Number(d.sisa)) : '—'}</td>}
+                <td className="p-3"><span className="whitespace-nowrap rounded bg-canvas px-2 py-0.5 text-xs font-medium">{statusLabel(d)}</span></td>
+                <td className="p-3"><div className="flex flex-wrap justify-end gap-1.5">
+                  <button className="btn" onClick={() => window.open('/cetak/pembelian/' + d.id, '_blank')}>Cetak</button>
+                  {canEdit(d) && <button className="btn" onClick={() => openForm(d)}>Ubah</button>}
+                  {perm.edit && isFaktur && d.status === 'draft' && <button className="btn" onClick={() => setStatus(d, 'terbit', 'Terbitkan ' + d.nomor + '? Setelah terbit, faktur siap dibayar.')}>Terbitkan</button>}
+                  {perm.create && isFaktur && d.status === 'terbit' && d.sisa > 0 && <button className="btn btn-primary" onClick={() => setBayar(d)}>Bayar</button>}
+                  {perm.edit && isFaktur && d.status === 'terbit' && d.terbayar === 0 && <button className="btn" onClick={() => setStatus(d, 'batal', 'Batalkan ' + d.nomor + '?')}>Batalkan</button>}
+                  {perm.edit && !isFaktur && d.status === 'draft' && <button className="btn" onClick={() => setStatus(d, 'dipesan')}>Tandai dipesan</button>}
+                  {perm.edit && !isFaktur && d.status === 'dipesan' && <>
+                    <button className="btn" onClick={() => setStatus(d, 'diterima')}>Barang diterima</button>
+                    <button className="btn" onClick={() => setStatus(d, 'batal', 'Batalkan pesanan ini?')}>Batalkan</button>
+                  </>}
+                  {perm.create && !isFaktur && d.status !== 'batal' && <button className="btn" onClick={() => keFaktur(d)}>Jadikan faktur</button>}
+                  {perm.delete && (!isFaktur || d.status === 'draft' || d.status === 'batal') && <button className="btn px-2" onClick={() => remove(d)} aria-label="Hapus"><Trash2 size={15} /></button>}
+                </div></td>
+              </tr>
+            ))}
+            {!visible.length && <tr><td colSpan={isFaktur ? 7 : 6} className="p-6 text-center text-ink/60">{loading ? 'Memuat…' : 'Belum ada data.'}</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function DokumenForm({ sb, companyId, jenis, pemasok, doc, items: initialItems, onDone, onCancel }: {
+  sb: ReturnType<typeof supabaseBrowser>; companyId: string; jenis: Jenis; pemasok: Pemasok[]
+  doc: Dokumen | null; items: Item[]; onDone: () => void; onCancel: () => void
+}) {
+  const today = isoDate(new Date())
+  const [pemasokId, setPemasokId] = useState(doc?.pemasok_id ?? pemasok[0]?.id ?? '')
+  const [tanggal, setTanggal] = useState(doc?.tanggal ?? today)
+  const [ref, setRef] = useState(doc?.no_referensi ?? '')
+  const [batas, setBatas] = useState(doc ? doc.batas_tanggal ?? '' : addDays(today, 14))
+  const [ppn, setPpn] = useState(String(doc?.ppn_persen ?? 0))
+  const [catatan, setCatatan] = useState(doc?.catatan ?? '')
+  const [items, setItems] = useState<Item[]>(initialItems)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const subtotal = items.reduce((s, i) => s + Number(i.qty || 0) * Number(i.harga || 0), 0)
+  const ppnNilai = Math.round(subtotal * Number(ppn || 0) / 100)
+  const setItem = (idx: number, patch: Partial<Item>) => setItems((list) => list.map((x, i) => i === idx ? { ...x, ...patch } : x))
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    setBusy(true); setError(null)
+    const { error } = await sb.rpc('pb_simpan_dokumen', {
+      p: { id: doc?.id ?? null, company_id: companyId, jenis, pemasok_id: pemasokId, no_referensi: ref,
+        tanggal, batas_tanggal: batas || null, ppn_persen: Number(ppn || 0), catatan,
+        items: items.map((i) => ({ deskripsi: i.deskripsi, qty: Number(i.qty), harga: Number(i.harga || 0) })) },
+    })
+    setBusy(false)
+    if (error) return setError(error.message)
+    onDone()
+  }
+
+  return (
+    <form onSubmit={submit} className="card space-y-4 p-4">
+      <h2 className="font-medium">{doc ? 'Ubah ' + doc.nomor : (jenis === 'faktur' ? 'Faktur baru' : 'Pesanan baru')}</h2>
+      {jenis === 'faktur' && <label className="block text-sm">No. faktur dari pemasok (opsional)<input className="input mt-1" value={ref} onChange={(e) => setRef(e.target.value)} /></label>}
+      <div className="grid gap-3 sm:grid-cols-4">
+        <label className="text-sm sm:col-span-2">Pemasok<select className="input mt-1" value={pemasokId} onChange={(e) => setPemasokId(e.target.value)} required>
+          {pemasok.map((p) => <option key={p.id} value={p.id}>{p.nama}</option>)}
+        </select></label>
+        <label className="text-sm">Tanggal<input type="date" className="input mt-1" value={tanggal} onChange={(e) => setTanggal(e.target.value)} required /></label>
+        <label className="text-sm">{jenis === 'faktur' ? 'Jatuh tempo' : 'Estimasi tiba'}<input type="date" className="input mt-1" value={batas} onChange={(e) => setBatas(e.target.value)} /></label>
+      </div>
+      <div className="space-y-2">
+        <div className="hidden grid-cols-12 gap-2 text-xs text-ink/60 sm:grid"><span className="col-span-6">Deskripsi</span><span className="col-span-2">Jumlah</span><span className="col-span-3">Harga satuan (Rp)</span></div>
+        {items.map((it, idx) => <div key={idx} className="grid grid-cols-12 gap-2">
+          <input className="input col-span-12 sm:col-span-6" placeholder="Barang atau jasa" value={it.deskripsi} onChange={(e) => setItem(idx, { deskripsi: e.target.value })} required aria-label="Deskripsi" />
+          <input className="input col-span-4 sm:col-span-2" type="number" min="0.01" step="any" value={it.qty} onChange={(e) => setItem(idx, { qty: e.target.value })} required aria-label="Jumlah" />
+          <input className="input col-span-6 sm:col-span-3" type="number" min="0" step="1" value={it.harga} onChange={(e) => setItem(idx, { harga: e.target.value })} required aria-label="Harga satuan" />
+          <button type="button" className="btn col-span-2 px-2 sm:col-span-1" disabled={items.length === 1} onClick={() => setItems((list) => list.filter((_, i) => i !== idx))} aria-label="Hapus baris"><Trash2 size={15} /></button>
+        </div>)}
+        <button type="button" className="btn" onClick={() => setItems((list) => [...list, { deskripsi: '', qty: 1, harga: '' }])}><Plus size={15} />Tambah baris</button>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="text-sm">Catatan<input className="input mt-1" value={catatan} onChange={(e) => setCatatan(e.target.value)} /></label>
+        <div className="space-y-1 text-sm sm:text-right">
+          <label className="inline-flex items-center gap-2">PPN (%)<input type="number" min="0" max="100" step="any" className="input w-20" value={ppn} onChange={(e) => setPpn(e.target.value)} /></label>
+          <p className="text-ink/60">Subtotal {rupiah(subtotal)} · PPN {rupiah(ppnNilai)}</p>
+          <p className="text-base font-semibold">Total {rupiah(subtotal + ppnNilai)}</p>
+        </div>
+      </div>
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      <div className="flex gap-2"><button className="btn btn-primary" disabled={busy || !pemasokId}>{busy ? 'Menyimpan…' : 'Simpan'}</button><button type="button" className="btn" onClick={onCancel}>Batal</button></div>
+    </form>
+  )
+}
+
+function BayarForm({ sb, dokumen, rekening, onDone, onCancel }: {
+  sb: ReturnType<typeof supabaseBrowser>; dokumen: Dokumen; rekening: RekeningPilihan[]; onDone: () => void; onCancel: () => void
+}) {
+  const [tanggal, setTanggal] = useState(isoDate(new Date()))
+  const [jumlah, setJumlah] = useState(String(dokumen.sisa))
+  const [rek, setRek] = useState(rekening[0]?.id ?? '')
+  const [catatan, setCatatan] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  async function submit(e: React.FormEvent) {
+    e.preventDefault(); setBusy(true); setError(null)
+    const { error } = await sb.rpc('pb_catat_pembayaran', { p_dokumen: dokumen.id, p_tanggal: tanggal, p_jumlah: Number(jumlah), p_rekening: rek, p_catatan: catatan || null })
+    setBusy(false)
+    if (error) return setError(error.message)
+    onDone()
+  }
+  return <form onSubmit={submit} className="card grid gap-3 p-4 sm:grid-cols-2">
+    <h2 className="font-medium sm:col-span-2">Pembayaran {dokumen.nomor} · sisa {rupiah(dokumen.sisa)}</h2>
+    <label className="text-sm">Tanggal<input type="date" className="input mt-1" value={tanggal} onChange={(e) => setTanggal(e.target.value)} required /></label>
+    <label className="text-sm">Jumlah (Rp)<input type="number" min="1" max={dokumen.sisa} step="1" className="input mt-1" value={jumlah} onChange={(e) => setJumlah(e.target.value)} required /></label>
+    <label className="text-sm">Bayar dari rekening<select className="input mt-1" value={rek} onChange={(e) => setRek(e.target.value)} required>{rekening.map((r) => <option key={r.id} value={r.id}>{r.nama}</option>)}</select></label>
+    <label className="text-sm">Catatan<input className="input mt-1" value={catatan} onChange={(e) => setCatatan(e.target.value)} /></label>
+    {!rekening.length && <p className="text-sm text-red-600 sm:col-span-2">Belum ada rekening aktif. Buat dulu di Kas &gt; Rekening Kas.</p>}
+    {error && <p className="text-sm text-red-600 sm:col-span-2">{error}</p>}
+    <div className="flex gap-2 sm:col-span-2"><button className="btn btn-primary" disabled={busy || !rek}>{busy ? 'Menyimpan…' : 'Catat pembayaran'}</button><button type="button" className="btn" onClick={onCancel}>Batal</button></div>
+  </form>
+}
