@@ -1,18 +1,25 @@
 # ERP Multi-Perusahaan (Next.js + Supabase + Vercel)
 
 ## Setup
-1. Buat project di Supabase. Buka SQL Editor, lalu jalankan `supabase/migrations/001_foundation.sql`.
-2. (Opsional, untuk uji coba) Supabase > Authentication > Providers > Email: matikan "Confirm email".
-3. Salin `.env.example` menjadi `.env.local` dan isi URL serta anon key dari Supabase > Project Settings > API.
-4. `npm install` lalu `npm run dev`.
-5. Deploy: push ke GitHub, import repo di Vercel, lalu isi 2 environment variable yang sama.
+1. Buat project di Supabase.
+2. Di Supabase SQL Editor, jalankan file migrasi berurutan: `001_foundation.sql`, `002_kas.sql`, `003_penjualan.sql`, `004_pembelian.sql`, `005_reminder.sql`, lalu `006_kendaraan.sql`. **Jangan jalankan ulang migrasi yang sudah berhasil diterapkan**, karena beberapa perintah membuat tabel dan policy yang sudah ada.
+3. Salin `.env.example` menjadi `.env.local`, lalu isi `NEXT_PUBLIC_SUPABASE_URL` dan `NEXT_PUBLIC_SUPABASE_ANON_KEY` dari Supabase > Project Settings > API.
+4. Untuk fitur pelacakan sopir/GPS, isi `SUPABASE_SERVICE_ROLE_KEY` di environment server (misalnya Vercel). **Jangan pernah menamainya `NEXT_PUBLIC_...` atau memasukkan nilainya ke kode browser.**
+5. Untuk tampilan peta interaktif, isi `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` dan batasi API key berdasarkan domain di Google Cloud Console. `NEXT_PUBLIC_GOOGLE_MAP_ID` opsional.
+6. Jalankan `npm install`, lalu `npm run dev`.
+7. Untuk deploy, import repo di Vercel dan atur environment variable yang diperlukan.
 
 ## Cara kerja
-- **Multi-perusahaan:** semua tabel punya `company_id`. Keamanan dijaga RLS di database, bukan hanya di tampilan.
-- **Peran:** `owner` dan `admin` punya akses penuh. `member` hanya ke modul yang dicentang di Pengaturan > Anggota & Akses (Lihat, Tambah, Ubah, Hapus). Tanpa centang berarti tidak ada akses.
+- **Multi-perusahaan:** tabel bisnis memisahkan data menggunakan `company_id`. Keamanan dijaga melalui Row Level Security (RLS) di database.
+- **Peran:** `owner` dan `admin` memiliki akses penuh. `member` mengikuti hak akses modul yang diberikan di Pengaturan > Anggota & Akses.
 - **Menu:** semua menu dan submenu didaftarkan di `src/config/modules.ts`.
 
-## Menambah modul baru (misal Kas)
-1. SQL baru: `supabase/migrations/002_kas.sql`. Tabel dengan `company_id` dan policy `has_perm(company_id, 'kas', 'view')` (lihat template di akhir 001).
-2. Kode modul di `src/modules/kas/` (komponen, aksi, tipe).
-3. Halaman di `src/app/(app)/kas/masuk/page.tsx` dan seterusnya. Folder statis menggantikan halaman sementara.
+## Modul Kendaraan
+- Daftar kendaraan dan status aktif/nonaktif.
+- Catatan servis, odometer, rencana servis berikutnya, dan biaya.
+- Catatan BBM, liter, biaya, dan perkiraan efisiensi km/l jika data odometer memadai.
+- Pajak tahunan, STNK, KIR, dan asuransi; tanggal jatuh tempo disinkronkan menjadi data pengingat.
+- Lokasi tersimpan dan peta armada live setelah Google Maps dikonfigurasi.
+- Link pelacakan untuk sopir melalui browser HP atau perangkat GPS yang mengirim koordinat ke `/api/lokasi`. Bagikan link/token hanya kepada pihak yang berwenang.
+
+Migrasi `005_reminder.sql` merupakan fondasi tabel Reminder yang dipakai integrasi jadwal servis/pajak kendaraan; antarmuka Reminder khusus dapat dikembangkan terpisah.
