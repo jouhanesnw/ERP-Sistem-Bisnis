@@ -7,7 +7,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const ctx = await getAppContext()
   const visible = MODULES.filter((m) => can(ctx.perms, m.key))
   return (
-    <AppShell modules={visible} companies={ctx.companies} activeId={ctx.active.companyId} email={ctx.user.email}>
+    <AppShell modules={visible} companies={ctx.companies} activeId={ctx.active.companyId} email={ctx.user.email} fullName={ctx.user.fullName}>
       {children}
     </AppShell>
   )
