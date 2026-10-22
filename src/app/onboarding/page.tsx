@@ -64,20 +64,22 @@ export default function OnboardingPage() {
         || 'Pengguna'
       if (alive) setFullName(displayName)
 
-      // Hindari onboarding ulang dan pembuatan perusahaan duplikat
-      // untuk akun yang sudah menjadi anggota suatu perusahaan.
+      const addAnotherBusiness = new URLSearchParams(window.location.search).get('new') === '1'
       const { data: memberships, error: membershipError } = await sb
         .from('memberships')
         .select('company_id')
         .eq('user_id', user.id)
         .limit(1)
 
-      if (!membershipError && memberships?.length) {
+      if (!membershipError && memberships?.length && !addAnotherBusiness) {
         router.replace('/dashboard')
         router.refresh()
         return
       }
-      if (alive) setChecking(false)
+      if (alive) {
+        if (addAnotherBusiness) setStep('company')
+        setChecking(false)
+      }
     }
     void initialize()
     return () => { alive = false }
