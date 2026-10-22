@@ -7,6 +7,11 @@ import { supabaseBrowser } from '@/lib/supabase/client'
 import { addDays, isoDate, rupiah, tglID } from '@/lib/format'
 import type { Dokumen, Item, Jenis, Pelanggan, PjPerm, RekeningPilihan } from './types'
 
+
+const MODUL = 'penjualan'
+type ProdukPilihan = { id: string; kode: string | null; nama: string; satuan: string; harga_jual: number; harga_beli: number; stok: number; lacak_stok: boolean; aktif: boolean }
+const fmtN = (n: number) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(n)
+
 export default function DokumenManager({ companyId, jenis, pelanggan, rekening, perm }: {
   companyId: string; jenis: Jenis; pelanggan: Pelanggan[]; rekening: RekeningPilihan[]; perm: PjPerm
 }) {
@@ -40,7 +45,7 @@ export default function DokumenManager({ companyId, jenis, pelanggan, rekening, 
 
   async function openForm(doc: Dokumen | null) {
     if (!doc) return setForm({ doc: null, items: [{ deskripsi: '', qty: 1, harga: 0 }] })
-    const { data, error } = await sb.from('pj_dokumen_item').select('deskripsi, qty, harga').eq('dokumen_id', doc.id).order('urutan')
+    const { data, error } = await sb.from('pj_dokumen_item').select('deskripsi, qty, harga, produk_id').eq('dokumen_id', doc.id).order('urutan')
     if (error) return setError(error.message)
     setForm({ doc, items: (data ?? []) as Item[] })
   }
@@ -117,13 +122,20 @@ function DokumenForm({ sb, companyId, jenis, pelanggan, doc, items: initialItems
   const [ppn, setPpn] = useState(String(doc?.ppn_persen ?? 0))
   const [catatan, setCatatan] = useState(doc?.catatan ?? '')
   const [items, setItems] = useState<Item[]>(initialItems)
+  const [produk, setProduk] = useState<ProdukPilihan[]>([])
+  useEffect(() => { sb.rpc('pd_pilihan', { cid: companyId, modul: MODUL }).then(({ data }) => setProduk((data ?? []) as ProdukPilihan[])) }, [sb, companyId])
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const subtotal = items.reduce((s, i) => s + Number(i.qty || 0) * Number(i.harga || 0), 0)
   const setItem = (idx: number, patch: Partial<Item>) => setItems((old) => old.map((it, i) => i === idx ? { ...it, ...patch } : it))
+  function pilihProduk(idx: number, id: string) {
+    const p = produk.find((x) => x.id === id)
+    if (!p) return setItem(idx, { produk_id: null })
+    setItem(idx, { produk_id: p.id, deskripsi: p.nama, harga: MODUL === 'penjualan' ? p.harga_jual : p.harga_beli })
+  }
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setError(null)
-    const { error } = await sb.rpc('pj_simpan_dokumen', { p: { id: doc?.id ?? null, company_id: companyId, jenis, pelanggan_id: pel, tanggal, batas_tanggal: batas || null, ppn_persen: Number(ppn), catatan, items: items.map((i) => ({ deskripsi: i.deskripsi, qty: Number(i.qty), harga: Number(i.harga) })) } })
+    const { error } = await sb.rpc('pj_simpan_dokumen', { p: { id: doc?.id ?? null, company_id: companyId, jenis, pelanggan_id: pel, tanggal, batas_tanggal: batas || null, ppn_persen: Number(ppn), catatan, items: items.map((i) => ({ deskripsi: i.deskripsi, qty: Number(i.qty), harga: Number(i.harga || 0), produk_id: i.produk_id ?? null })) } })
     setBusy(false)
     if (error) return setError(error.message)
     onDone()
@@ -136,9 +148,14 @@ function DokumenForm({ sb, companyId, jenis, pelanggan, doc, items: initialItems
       <label className="text-sm">{jenis === 'faktur' ? 'Jatuh tempo' : 'Berlaku sampai'}<input type="date" className="input mt-1" value={batas} onChange={(e) => setBatas(e.target.value)} /></label>
     </div>
     <div className="space-y-2">{items.map((it, idx) => <div key={idx} className="grid grid-cols-12 gap-2">
-      <input className="input col-span-12 sm:col-span-6" placeholder="Barang atau jasa" value={it.deskripsi} onChange={(e) => setItem(idx, { deskripsi: e.target.value })} required aria-label="Deskripsi" />
+      <select className="input col-span-12 sm:col-span-3" value={it.produk_id ?? ''} onChange={(e) => pilihProduk(idx, e.target.value)} aria-label="Produk">
+            <option value="">Teks bebas</option>
+            {produk.filter((p) => p.aktif || p.id === it.produk_id).map((p) => <option key={p.id} value={p.id}>{p.kode ? p.kode + ' · ' : ''}{p.nama}</option>)}
+          </select>
+          <input className="input col-span-12 sm:col-span-4" placeholder="Barang atau jasa" value={it.deskripsi} onChange={(e) => setItem(idx, { deskripsi: e.target.value })} required aria-label="Deskripsi" />
       <input className="input col-span-4 sm:col-span-2" type="number" min="0.01" step="any" value={it.qty} onChange={(e) => setItem(idx, { qty: e.target.value })} required aria-label="Jumlah" />
       <input className="input col-span-6 sm:col-span-3" type="number" min="0" step="1" value={it.harga} onChange={(e) => setItem(idx, { harga: e.target.value })} required aria-label="Harga satuan" />
+      {produk.find((p) => p.id === it.produk_id)?.lacak_stok && <p className="col-span-12 text-xs text-ink/50">Stok tercatat: {fmtN(Number(produk.find((p) => p.id === it.produk_id)?.stok ?? 0))} {produk.find((p) => p.id === it.produk_id)?.satuan}</p>}
       <button type="button" className="btn col-span-2 px-2" disabled={items.length === 1} onClick={() => setItems((old) => old.filter((_, i) => i !== idx))} aria-label="Hapus baris"><Trash2 size={15} /></button>
     </div>)}
       <button type="button" className="btn" onClick={() => setItems((old) => [...old, { deskripsi: '', qty: 1, harga: 0 }])}><Plus size={15} />Tambah baris</button>

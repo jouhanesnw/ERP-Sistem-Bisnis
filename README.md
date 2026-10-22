@@ -2,7 +2,7 @@
 
 ## Setup
 1. Buat project di Supabase.
-2. Di Supabase SQL Editor, jalankan file migrasi berurutan: `001_foundation.sql`, `002_kas.sql`, `003_penjualan.sql`, `004_pembelian.sql`, `005_reminder.sql`, lalu `006_kendaraan.sql`. **Jangan jalankan ulang migrasi yang sudah berhasil diterapkan**, karena beberapa perintah membuat tabel dan policy yang sudah ada.
+2. Di Supabase SQL Editor, jalankan file migrasi berurutan: `001_foundation.sql`, `002_kas.sql`, `003_penjualan.sql`, `004_pembelian.sql`, `005_reminder.sql`, lalu `006_kendaraan.sql`, dan terakhir `007_produk.sql`. **Jangan jalankan ulang migrasi yang sudah berhasil diterapkan**, karena beberapa perintah membuat tabel dan policy yang sudah ada.
 3. Salin `.env.example` menjadi `.env.local`, lalu isi `NEXT_PUBLIC_SUPABASE_URL` dan `NEXT_PUBLIC_SUPABASE_ANON_KEY` dari Supabase > Project Settings > API.
 4. Untuk fitur pelacakan sopir/GPS, isi `SUPABASE_SERVICE_ROLE_KEY` di environment server (misalnya Vercel). **Jangan pernah menamainya `NEXT_PUBLIC_...` atau memasukkan nilainya ke kode browser.**
 5. Untuk tampilan peta interaktif, isi `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` dan batasi API key berdasarkan domain di Google Cloud Console. `NEXT_PUBLIC_GOOGLE_MAP_ID` opsional.
@@ -23,3 +23,12 @@
 - Link pelacakan untuk sopir melalui browser HP atau perangkat GPS yang mengirim koordinat ke `/api/lokasi`. Bagikan link/token hanya kepada pihak yang berwenang.
 
 Migrasi `005_reminder.sql` merupakan fondasi tabel Reminder yang dipakai integrasi jadwal servis/pajak kendaraan; antarmuka Reminder khusus dapat dikembangkan terpisah.
+
+## Modul Produk & Stok
+- Master produk dengan SKU/kode, satuan dasar retail, harga beli/jual, status aktif, stok minimum, dan stok awal.
+- Kartu stok: stok awal, pembelian, penjualan, dan penyesuaian.
+- Faktur penjualan yang diterbitkan membuat mutasi stok keluar; faktur pembelian yang diterbitkan membuat mutasi stok masuk.
+- Penjualan dan Pembelian dapat memilih produk dari master, atau tetap memakai teks bebas.
+- Tahap ini menggunakan stok per perusahaan (belum multi-gudang). Multi-gudang perlu ditambahkan dalam tahap berikutnya.
+
+Migrasi 007_produk.sql bergantung pada migrasi fondasi, Kas, Penjualan, dan Pembelian yang sudah berhasil diterapkan. Jangan jalankan ulang migrasi lama.

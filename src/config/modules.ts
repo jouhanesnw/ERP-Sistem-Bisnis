@@ -41,6 +41,14 @@ export const MODULES: ModuleDef[] = [
     ],
   },
   {
+    key: 'produk', label: 'Produk & Stok', icon: 'Boxes',
+    children: [
+      { label: 'Daftar Produk', href: '/produk/daftar' },
+      { label: 'Stok & Riwayat', href: '/produk/stok' },
+      { label: 'Penyesuaian Stok', href: '/produk/penyesuaian' },
+    ],
+  },
+  {
     key: 'reminder', label: 'Reminder', icon: 'BellRing',
     children: [
       { label: 'Semua Pengingat', href: '/reminder/semua' },

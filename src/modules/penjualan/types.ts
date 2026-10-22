@@ -5,7 +5,7 @@ export type Dokumen = {
   pelanggan_id: string; pelanggan_nama: string; status: string; ppn_persen: number; catatan: string | null
   sumber_id: string | null; subtotal: number; total: number; terbayar: number; sisa: number
 }
-export type Item = { deskripsi: string; qty: number | string; harga: number | string }
+export type Item = { deskripsi: string; qty: number | string; harga: number | string; produk_id?: string | null }
 export type Pembayaran = {
   id: string; tanggal: string; jumlah: number; rekening_id: string; catatan: string | null; dokumen_id: string
   pj_dokumen: { nomor: string; pelanggan_id: string } | null
