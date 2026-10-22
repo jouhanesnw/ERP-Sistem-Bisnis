@@ -45,6 +45,7 @@ export default function OnboardingPage() {
   const [logo, setLogo] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [initError, setInitError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [checking, setChecking] = useState(true)
 
@@ -71,8 +72,15 @@ export default function OnboardingPage() {
         .eq('user_id', user.id)
         .limit(1)
 
-      if (!membershipError && memberships?.length && !addAnotherBusiness) {
-        router.replace('/dashboard')
+      if (membershipError) {
+        if (alive) {
+          setInitError('Sistem belum dapat memeriksa data usaha akun ini: ' + membershipError.message + '. Jangan buat data usaha berulang kali. Buka Data Usaha Saya untuk melihat apa yang sudah tersimpan.')
+          setChecking(false)
+        }
+        return
+      }
+      if (memberships?.length && !addAnotherBusiness) {
+        router.replace('/data-usaha')
         router.refresh()
         return
       }
@@ -172,12 +180,27 @@ export default function OnboardingPage() {
 
     document.cookie = `company_id=${companyId}; path=/; max-age=31536000; samesite=lax`
     if (logoWarning) window.alert(logoWarning)
-    router.replace('/dashboard')
+    router.replace('/data-usaha?created=1')
     router.refresh()
   }
 
   if (checking) {
     return <main className="grid min-h-screen place-items-center p-4"><div className="card w-full max-w-lg p-6 text-center">Memeriksa akun dan data usaha…</div></main>
+  }
+
+  if (initError) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-slate-50 p-4 text-slate-900">
+        <section className="card w-full max-w-xl space-y-4 p-6">
+          <h1 className="text-xl font-semibold">Data usaha belum bisa diperiksa</h1>
+          <p role="alert" className="text-sm text-red-700">{initError}</p>
+          <div className="flex flex-wrap gap-3">
+            <button type="button" className="btn" onClick={() => window.location.reload()}>Coba Lagi</button>
+            <button type="button" className="btn btn-primary" onClick={() => router.push('/data-usaha')}>Buka Data Usaha Saya</button>
+          </div>
+        </section>
+      </main>
+    )
   }
 
   if (step === 'welcome') {
