@@ -22,13 +22,13 @@ where not exists (select 1 from public.pd_gudang g where g.company_id=c.id and g
 
 -- Otomatis membuat gudang utama untuk perusahaan yang dibuat setelah migrasi ini.
 create or replace function public.pd_buat_gudang_default() returns trigger
-language plpgsql security definer set search_path=public as $
+language plpgsql security definer set search_path=public as $$
 begin
   insert into public.pd_gudang(company_id,kode,nama,is_default)
   values(new.id,'UTAMA','Gudang Utama',true)
   on conflict do nothing;
   return new;
-end $;
+end $$;
 create trigger pd_company_gudang_default after insert on public.companies
 for each row execute function public.pd_buat_gudang_default();
 
@@ -310,19 +310,31 @@ left join lateral (select sum(x.jumlah) as terbayar from public.pb_pembayaran x 
 -- Protect issued invoices from in-place edits: changing their items would rewrite a posted stock movement.
 
 create or replace function public.pd_tolak_edit_faktur_terbit() returns trigger
-language plpgsql set search_path=public as $
+language plpgsql set search_path=public as $$
 begin
-  if old.jenis='faktur' and old.status='terbit' and
-     (new.status is distinct from old.status or new.tanggal is distinct from old.tanggal or new.gudang_id is distinct from old.gudang_id) then
-    -- Status changes to batal are allowed only if the document has no payments; existing app handles that rule.
-    if new.status<>'batal' then raise exception 'Faktur terbit tidak dapat diubah. Batalkan tanpa pembayaran lalu buat ulang.'; end if;
+  if old.jenis='faktur' and old.status='terbit' then
+    -- Faktur terbit tidak boleh diedit; satu-satunya perubahan yang diizinkan adalah membatalkan faktur tanpa pembayaran.
+    if new.status<>'batal' or (to_jsonb(new)-'status') is distinct from (to_jsonb(old)-'status') then
+      raise exception 'Faktur terbit tidak dapat diubah. Untuk membatalkan, ubah hanya status menjadi batal.';
+    end if;
     if tg_table_name='pj_dokumen' and exists(select 1 from public.pj_pembayaran where dokumen_id=old.id) then raise exception 'Faktur yang sudah dibayar tidak dapat dibatalkan.'; end if;
     if tg_table_name='pb_dokumen' and exists(select 1 from public.pb_pembayaran where dokumen_id=old.id) then raise exception 'Faktur yang sudah dibayar tidak dapat dibatalkan.'; end if;
   end if;
   return new;
-end $;
+end $$;
 create trigger pd_protect_pj_invoice before update on public.pj_dokumen for each row execute function public.pd_tolak_edit_faktur_terbit();
 create trigger pd_protect_pb_invoice before update on public.pb_dokumen for each row execute function public.pd_tolak_edit_faktur_terbit();
+
+create or replace function public.pd_tolak_hapus_faktur_terbit() returns trigger
+language plpgsql set search_path=public as $$
+begin
+  if old.jenis='faktur' and old.status='terbit' then
+    raise exception 'Faktur terbit tidak boleh dihapus langsung. Batalkan faktur tanpa pembayaran terlebih dahulu.';
+  end if;
+  return old;
+end $$;
+create trigger pd_hapus_pj_invoice before delete on public.pj_dokumen for each row execute function public.pd_tolak_hapus_faktur_terbit();
+create trigger pd_hapus_pb_invoice before delete on public.pb_dokumen for each row execute function public.pd_tolak_hapus_faktur_terbit();
 
 -- Keep stock movements synchronized when the warehouse is changed on a still-draft invoice.
 drop trigger if exists pd_dok_pj on public.pj_dokumen;
@@ -333,7 +345,7 @@ create trigger pd_dok_pb after update of status,tanggal,gudang_id or delete on p
 
 -- Blokir perubahan detail item faktur yang sudah terbit agar kartu stok tidak dapat diedit langsung lewat API.
 create or replace function public.pd_jaga_item_faktur()
-returns trigger language plpgsql security definer set search_path=public as $
+returns trigger language plpgsql security definer set search_path=public as $$
 declare did uuid; st text; j text;
 begin
   did := case when tg_op='DELETE' then old.dokumen_id else new.dokumen_id end;
@@ -345,7 +357,7 @@ begin
   if j='faktur' and st='terbit' then raise exception 'Rincian faktur terbit tidak dapat diubah. Batalkan faktur tanpa pembayaran lalu buat ulang.'; end if;
   if tg_op='DELETE' then return old; end if;
   return new;
-end $;
+end $$;
 create trigger pd_jaga_item_pj before insert or update or delete on public.pj_dokumen_item for each row execute function public.pd_jaga_item_faktur();
 create trigger pd_jaga_item_pb before insert or update or delete on public.pb_dokumen_item for each row execute function public.pd_jaga_item_faktur();
 
