@@ -2,7 +2,7 @@
 
 ## Setup
 1. Buat project di Supabase.
-2. Di Supabase SQL Editor, jalankan file migrasi berurutan: `001_foundation.sql`, `002_kas.sql`, `003_penjualan.sql`, `004_pembelian.sql`, `005_reminder.sql`, lalu `006_kendaraan.sql`, dan terakhir `007_produk.sql`, lalu `008_multi_gudang.sql`. **Jangan jalankan ulang migrasi yang sudah berhasil diterapkan**, karena beberapa perintah membuat tabel dan policy yang sudah ada.
+2. Di Supabase SQL Editor, jalankan file migrasi berurutan: `001_foundation.sql`, `002_kas.sql`, `003_penjualan.sql`, `004_pembelian.sql`, `005_reminder.sql`, lalu `006_kendaraan.sql`, dan terakhir `007_produk.sql`, lalu `008_multi_gudang.sql`, dan terakhir `009_akuntansi.sql`. **Jangan jalankan ulang migrasi yang sudah berhasil diterapkan**, karena beberapa perintah membuat tabel dan policy yang sudah ada.
 3. Salin `.env.example` menjadi `.env.local`, lalu isi `NEXT_PUBLIC_SUPABASE_URL` dan `NEXT_PUBLIC_SUPABASE_ANON_KEY` dari Supabase > Project Settings > API.
 4. Untuk fitur pelacakan sopir/GPS, isi `SUPABASE_SERVICE_ROLE_KEY` di environment server (misalnya Vercel). **Jangan pernah menamainya `NEXT_PUBLIC_...` atau memasukkan nilainya ke kode browser.**
 5. Untuk tampilan peta interaktif, isi `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` dan batasi API key berdasarkan domain di Google Cloud Console. `NEXT_PUBLIC_GOOGLE_MAP_ID` opsional.
@@ -39,3 +39,11 @@ Migrasi 007_produk.sql bergantung pada migrasi fondasi, Kas, Penjualan, dan Pemb
 - Transfer stok antar gudang dilakukan langsung dan atomik melalui Produk & Stok > Transfer Gudang.
 - Pilih gudang pengeluaran/penerimaan pada formulir Penjualan/Pembelian. Mutasi stok terjadi ketika faktur diterbitkan.
 - Stok dan penyesuaian dapat dilihat per gudang; satuan grosir belum diaktifkan.
+
+## Modul Akuntansi
+- Daftar akun (Chart of Accounts), jurnal manual double-entry, buku besar, laporan laba-rugi dan neraca.
+- Jurnal otomatis dari faktur penjualan/pembelian ketika berstatus terbit dan dari transaksi Kas.
+- Penerimaan/pembayaran faktur dicatat sebagai pelunasan piutang/utang, bukan pendapatan/beban kedua kali.
+- Migrasi 009 membuat jurnal saldo awal berdasarkan saldo Kas, persediaan, piutang, dan utang yang tercatat saat modul diaktifkan.
+- Biaya pokok penjualan memakai harga beli pada master produk sebagai estimasi; metode biaya persediaan lebih lengkap (FIFO/weighted average) belum diterapkan.
+- Setelah menjalankan migrasi, petakan kategori Kas pada Akuntansi > Daftar Akun untuk klasifikasi pengeluaran/pemasukan yang benar.

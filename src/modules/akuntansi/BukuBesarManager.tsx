@@ -1,0 +1,20 @@
+'use client'
+import { useCallback,useEffect,useMemo,useState } from 'react'
+import { supabaseBrowser } from '@/lib/supabase/client'
+import { monthStart,rupiah,tglID,isoDate } from '@/lib/format'
+import type { Akun } from './types'
+type Entry={id:string;company_id:string;jurnal_id:string;akun_id:string;debit:number|string;kredit:number|string;nomor:string;tanggal:string;jurnal_keterangan:string;baris_keterangan:string|null;kode:string;nama:string;normal:'debit'|'kredit'}
+export default function BukuBesarManager({companyId,akun}:{companyId:string;akun:Akun[]}){
+ const sb=useMemo(()=>supabaseBrowser(),[]),[aid,setAid]=useState(akun[0]?.id??''),[from,setFrom]=useState(monthStart()),[to,setTo]=useState(isoDate(new Date())),[rows,setRows]=useState<Entry[]>([]),[loading,setLoading]=useState(false),[error,setError]=useState<string|null>(null)
+ const load=useCallback(async()=>{if(!aid)return;setLoading(true);const {data,error}=await sb.from('ak_buku_besar_v').select('*').eq('company_id',companyId).eq('akun_id',aid).lte('tanggal',to).order('tanggal').order('nomor').order('urutan').limit(5000);setLoading(false);if(error)return setError(error.message);setError(null);setRows((data??[]) as Entry[])},[sb,companyId,aid,from,to])
+ useEffect(()=>{load()},[load])
+ const account=akun.find(a=>a.id===aid)
+ const ledger=useMemo(()=>{let saldo=0;return rows.map(r=>{const d=Number(r.debit),k=Number(r.kredit);saldo+=account?.normal==='kredit'?k-d:d-k;return {...r,saldo}}).filter(r=>r.tanggal>=from&&r.tanggal<=to)},[rows,account,from,to])
+ const last=ledger.length?ledger[ledger.length-1].saldo:rows.filter(r=>r.tanggal<from).reduce((s,r)=>s+(account?.normal==='kredit'?Number(r.kredit)-Number(r.debit):Number(r.debit)-Number(r.kredit)),0)
+ return <div className="space-y-4"><div><h1 className="text-2xl font-semibold">Buku Besar</h1><p className="text-sm text-ink/60">Rincian debit, kredit, dan saldo berjalan per akun.</p></div>
+  <div className="card flex flex-wrap items-end gap-3 p-4"><label className="min-w-[16rem] text-sm">Akun<select className="input mt-1" value={aid} onChange={e=>setAid(e.target.value)}>{akun.map(a=><option key={a.id} value={a.id}>{a.kode} · {a.nama}</option>)}</select></label><label className="text-sm">Dari<input type="date" className="input mt-1" value={from} onChange={e=>setFrom(e.target.value)}/></label><label className="text-sm">Sampai<input type="date" className="input mt-1" value={to} onChange={e=>setTo(e.target.value)}/></label></div>
+  {error&&<p className="text-sm text-red-600">{error}</p>}
+  <div className="grid gap-3 sm:grid-cols-3"><div className="card p-4"><p className="text-sm text-ink/60">Akun</p><p className="font-semibold">{account?account.kode+' · '+account.nama:'—'}</p></div><div className="card p-4"><p className="text-sm text-ink/60">Transaksi tampil</p><p className="text-xl font-semibold">{ledger.length}</p></div><div className="card p-4"><p className="text-sm text-ink/60">Saldo akhir periode</p><p className="text-xl font-semibold">{rupiah(last)}</p></div></div>
+  <div className="card overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr className="border-b border-line text-ink/60"><th className="p-3">Tanggal</th><th className="p-3">Nomor</th><th className="p-3">Keterangan</th><th className="p-3 text-right">Debit</th><th className="p-3 text-right">Kredit</th><th className="p-3 text-right">Saldo</th></tr></thead><tbody>{ledger.map(r=><tr key={r.id} className="border-b border-line last:border-0"><td className="p-3 whitespace-nowrap">{tglID(r.tanggal)}</td><td className="p-3 whitespace-nowrap">{r.nomor}</td><td className="p-3">{r.baris_keterangan||r.jurnal_keterangan}</td><td className="p-3 text-right">{Number(r.debit)?rupiah(Number(r.debit)):'—'}</td><td className="p-3 text-right">{Number(r.kredit)?rupiah(Number(r.kredit)):'—'}</td><td className="p-3 text-right font-medium">{rupiah(r.saldo)}</td></tr>)}{!ledger.length&&<tr><td colSpan={6} className="p-6 text-center text-ink/50">{loading?'Memuat…':'Tidak ada transaksi pada periode ini.'}</td></tr>}</tbody></table></div>
+ </div>
+}

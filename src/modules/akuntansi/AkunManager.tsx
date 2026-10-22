@@ -1,0 +1,31 @@
+'use client'
+import { useCallback,useEffect,useMemo,useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { supabaseBrowser } from '@/lib/supabase/client'
+import type { AkPerm,Akun,KategoriKas } from './types'
+
+const TIPE=[['aset','Aset'],['kewajiban','Kewajiban'],['modal','Modal / Ekuitas'],['pendapatan','Pendapatan'],['beban','Beban']] as const
+const LABEL:Record<string,string>={aset:'Aset',kewajiban:'Kewajiban',modal:'Modal / Ekuitas',pendapatan:'Pendapatan',beban:'Beban'}
+export default function AkunManager({companyId,akun:initial,perm}:{companyId:string;akun:Akun[];perm:AkPerm}){
+ const sb=useMemo(()=>supabaseBrowser(),[]),router=useRouter()
+ const [akun,setAkun]=useState(initial),[kategori,setKategori]=useState<KategoriKas[]>([]),[nama,setNama]=useState(''),[kode,setKode]=useState(''),[tipe,setTipe]=useState<Akun['tipe']>('beban'),[showForm,setShowForm]=useState(false),[error,setError]=useState<string|null>(null),[info,setInfo]=useState<string|null>(null),[busy,setBusy]=useState(false)
+ const loadMap=useCallback(async()=>{const {data,error}=await sb.rpc('ak_kategori_kas_pilihan',{cid:companyId});if(error)return setError(error.message);setKategori((data??[]) as KategoriKas[])},[sb,companyId])
+ useEffect(()=>{loadMap()},[loadMap])
+ async function create(e:React.FormEvent){e.preventDefault();setBusy(true);setError(null);setInfo(null)
+  const payload={company_id:companyId,kode:kode.trim(),nama:nama.trim(),tipe,normal:['aset','beban'].includes(tipe)?'debit':'kredit',sistem:false,aktif:true}
+  const {data,error}=await sb.from('ak_akun').insert(payload).select('*').single()
+  setBusy(false);if(error)return setError(error.code==='23505'?'Kode akun sudah digunakan.':error.message)
+  setAkun(old=>[...old,data as Akun].sort((a,b)=>a.kode.localeCompare(b.kode)))
+  setNama('');setKode('');setShowForm(false);setInfo('Akun berhasil ditambahkan.');router.refresh()
+ }
+ async function toggle(a:Akun){const {error}=await sb.from('ak_akun').update({aktif:!a.aktif}).eq('id',a.id);if(error)return setError(error.message);setAkun(x=>x.map(y=>y.id===a.id?{...y,aktif:!y.aktif}:y));}
+ async function mapCategory(id:string,accountId:string){const {error}=await sb.rpc('ak_peta_kategori_kas',{p_kategori:id,p_akun:accountId||null});if(error)return setError(error.message);setKategori(x=>x.map(k=>k.id===id?{...k,ak_akun_id:accountId||null}:k));setInfo('Pemetaan kategori Kas disimpan. Jurnal untuk transaksi kategori ini ikut diperbarui.')}
+ const groups=useMemo(()=>TIPE.map(([key,label])=>({key,label,items:akun.filter(a=>a.tipe===key)})),[akun])
+ return <div className="space-y-5">
+  <div className="flex flex-wrap items-center gap-3"><div><h1 className="text-2xl font-semibold">Daftar Akun</h1><p className="text-sm text-ink/60">Chart of Accounts dan pemetaan kategori Kas.</p></div>{perm.create&&<button className="btn btn-primary ml-auto" onClick={()=>setShowForm(x=>!x)}>{showForm?'Batal':'Tambah akun'}</button>}</div>
+  {error&&<p className="text-sm text-red-600">{error}</p>}{info&&<p className="text-sm text-green-700">{info}</p>}
+  {showForm&&<form onSubmit={create} className="card grid gap-3 p-4 sm:grid-cols-3"><label className="text-sm">Kode akun<input className="input mt-1" value={kode} onChange={e=>setKode(e.target.value)} required placeholder="Contoh: 6200"/></label><label className="text-sm sm:col-span-2">Nama akun<input className="input mt-1" value={nama} onChange={e=>setNama(e.target.value)} required placeholder="Contoh: Beban listrik"/></label><label className="text-sm">Kelompok<select className="input mt-1" value={tipe} onChange={e=>setTipe(e.target.value as Akun['tipe'])}>{TIPE.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label><div className="flex items-end text-sm text-ink/60">Saldo normal otomatis: {['aset','beban'].includes(tipe)?'debit':'kredit'}</div><div className="flex items-end"><button className="btn btn-primary" disabled={busy}>{busy?'Menyimpan…':'Simpan akun'}</button></div></form>}
+  <div className="space-y-3">{groups.map(g=><section key={g.key} className="card overflow-x-auto"><div className="border-b border-line p-3 font-semibold">{g.label}</div><table className="w-full text-left text-sm"><thead><tr className="text-ink/60"><th className="p-3">Kode</th><th className="p-3">Nama akun</th><th className="p-3">Saldo normal</th><th className="p-3">Jenis</th><th className="p-3"/></tr></thead><tbody>{g.items.map(a=><tr key={a.id} className="border-t border-line"><td className="p-3 tabular-nums">{a.kode}</td><td className="p-3">{a.nama}{a.sistem&&<span className="ml-2 rounded bg-canvas px-1.5 py-0.5 text-xs">Sistem</span>}</td><td className="p-3 capitalize">{a.normal}</td><td className="p-3">{a.aktif?'Aktif':'Nonaktif'}</td><td className="p-3 text-right">{perm.edit&&!a.sistem&&<button className="btn" onClick={()=>toggle(a)}>{a.aktif?'Nonaktifkan':'Aktifkan'}</button>}</td></tr>)}{!g.items.length&&<tr><td colSpan={5} className="p-4 text-center text-ink/50">Belum ada akun di kelompok ini.</td></tr>}</tbody></table></section>)}</div>
+  <section className="card overflow-x-auto"><div className="border-b border-line p-4"><h2 className="font-semibold">Pemetaan Kategori Kas</h2><p className="mt-1 text-sm text-ink/60">Pilih akun lawan untuk transaksi Kas manual. Kategori yang belum dipetakan memakai akun default pendapatan lain-lain atau beban operasional.</p></div><table className="w-full text-left text-sm"><thead><tr className="text-ink/60"><th className="p-3">Kategori</th><th className="p-3">Jenis</th><th className="p-3">Akun lawan</th></tr></thead><tbody>{kategori.map(k=><tr key={k.id} className="border-t border-line"><td className="p-3">{k.nama}</td><td className="p-3 capitalize">{k.jenis}</td><td className="p-3"><select className="input min-w-[15rem]" value={k.ak_akun_id??''} disabled={!perm.edit} onChange={e=>mapCategory(k.id,e.target.value)}><option value="">Akun default sistem</option>{akun.filter(a=>a.aktif).map(a=><option key={a.id} value={a.id}>{a.kode} · {a.nama}</option>)}</select></td></tr>)}{!kategori.length&&<tr><td colSpan={3} className="p-4 text-center text-ink/50">Belum ada kategori Kas. Buat kategori terlebih dahulu di menu Kas.</td></tr>}</tbody></table></section>
+ </div>
+}

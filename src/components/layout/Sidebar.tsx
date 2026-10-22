@@ -2,10 +2,10 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
-import { ChevronDown, LayoutDashboard, Wallet, ShoppingCart, Package, BellRing, Car, Settings, Boxes, type LucideIcon } from 'lucide-react'
+import { ChevronDown, LayoutDashboard, Wallet, ShoppingCart, Package, BellRing, Car, Settings, Boxes, BookOpen, type LucideIcon } from 'lucide-react'
 import type { ModuleDef } from '@/config/modules'
 
-const ICONS: Record<string, LucideIcon> = { LayoutDashboard, Wallet, ShoppingCart, Package, BellRing, Car, Settings, Boxes }
+const ICONS: Record<string, LucideIcon> = { LayoutDashboard, Wallet, ShoppingCart, Package, BellRing, Car, Settings, Boxes, BookOpen }
 
 export default function Sidebar({ modules, companyName, open, onClose }: {
   modules: ModuleDef[]; companyName: string; open: boolean; onClose: () => void

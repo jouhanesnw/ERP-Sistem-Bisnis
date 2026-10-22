@@ -51,6 +51,15 @@ export const MODULES: ModuleDef[] = [
     ],
   },
   {
+    key: 'akuntansi', label: 'Akuntansi', icon: 'BookOpen',
+    children: [
+      { label: 'Daftar Akun', href: '/akuntansi/akun' },
+      { label: 'Jurnal Umum', href: '/akuntansi/jurnal' },
+      { label: 'Buku Besar', href: '/akuntansi/buku-besar' },
+      { label: 'Laporan Keuangan', href: '/akuntansi/laporan' },
+    ],
+  },
+  {
     key: 'reminder', label: 'Reminder', icon: 'BellRing',
     children: [
       { label: 'Semua Pengingat', href: '/reminder/semua' },
