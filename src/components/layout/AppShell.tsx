@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Menu, LogOut, UserRound, ChevronDown, Settings2 } from 'lucide-react'
+import { Menu, LogOut, UserRound, ChevronDown, Settings2, Building2 } from 'lucide-react'
 import Sidebar from './Sidebar'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import type { ModuleDef } from '@/config/modules'
@@ -64,7 +64,10 @@ export default function AppShell({ modules, companies, activeId, email, fullName
                 <p className="truncate text-xs text-ink/60">{email}</p>
                 <p className="mt-1 text-xs text-ink/50">Peran di data usaha ini: {active.role}</p>
               </div>
-              <Link href="/akun" onClick={() => setAccountOpen(false)} className="mt-1 flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-ink hover:bg-canvas">
+              <Link href="/data-usaha" onClick={() => setAccountOpen(false)} className="mt-1 flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-ink hover:bg-canvas">
+                <Building2 size={16} /> Data Usaha Saya
+              </Link>
+              <Link href="/akun" onClick={() => setAccountOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-ink hover:bg-canvas">
                 <Settings2 size={16} /> Akun & Profil
               </Link>
               <button type="button" onClick={logout} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-red-600 hover:bg-red-50">
