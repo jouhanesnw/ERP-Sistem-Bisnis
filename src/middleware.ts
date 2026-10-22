@@ -2,7 +2,7 @@ import { createServerClient, type SetAllCookies } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 // Jalur tanpa login. Endpoint lokasi tetap memvalidasi token kendaraan di route handler.
-const PUBLIK = ['/api/cron', '/api/lokasi', '/lacak/']
+const PUBLIK = ['/api/cron', '/api/lokasi', '/lacak/', '/auth/callback']
 
 export async function middleware(req: NextRequest) {
   if (PUBLIK.some((p) => req.nextUrl.pathname.startsWith(p))) return NextResponse.next()
