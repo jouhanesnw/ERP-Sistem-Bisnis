@@ -1,5 +1,6 @@
 import { getAppContext } from '@/lib/context'
 import ProfileManager from '@/modules/akun/ProfileManager'
+import BusinessCards from '@/modules/akun/BusinessCards'
 
 export default async function AccountPage() {
   const ctx = await getAppContext()
@@ -12,6 +13,7 @@ export default async function AccountPage() {
         <p className="mt-1 text-sm text-ink/60">Kelola nama profil dan keamanan akun ERP. Pengaturan ini tidak mengubah nama atau data perusahaan.</p>
       </div>
       <ProfileManager initialName={ctx.user.fullName} email={ctx.user.email} />
+      <BusinessCards />
     </div>
   )
 }
