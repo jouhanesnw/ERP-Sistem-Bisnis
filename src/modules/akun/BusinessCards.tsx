@@ -84,7 +84,7 @@ export default function BusinessCards() {
       {created && (
         <div role="status" className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
           <ShieldCheck size={18} className="mt-0.5 shrink-0" />
-          <span>Data usaha berhasil dikirim untuk disimpan. Pilih kartu di bawah ini untuk membuka dashboard. Jika kartu belum muncul, tekan Muat Ulang untuk memeriksa data yang tersimpan.</span>
+          <span>Data usaha berhasil dibuat. Pilih kartu di bawah ini untuk membuka dashboard. Jika kartu belum muncul, tekan Muat Ulang untuk memeriksa data yang tersimpan.</span>
         </div>
       )}
 
@@ -102,9 +102,9 @@ export default function BusinessCards() {
         <div className="card flex flex-col items-center gap-3 px-6 py-10 text-center">
           <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand/10 text-brand"><Building2 size={27} /></span>
           <h3 className="font-semibold">Belum ada data usaha yang terbaca</h3>
-          <p className="max-w-md text-sm text-ink/60">Kalau kamu baru selesai membuat data usaha, tekan Muat Ulang. Jika tetap kosong, jangan membuat duplikat—perlu diperiksa apakah keanggotaan tersimpan.</p>
+          <p className="max-w-md text-sm text-ink/60">{created ? 'Data usaha baru saja dibuat tetapi belum muncul pada daftar. Muat ulang untuk memeriksa akses keanggotaannya. Jangan buat duplikat.' : 'Kalau kamu baru selesai membuat data usaha, tekan Muat Ulang. Jika tetap kosong, jangan membuat duplikat—perlu diperiksa apakah keanggotaan tersimpan.'}</p>
           <button type="button" className="btn" onClick={() => void loadBusinesses()}><RefreshCw size={16} />Muat Ulang</button>
-          <button type="button" className="btn btn-primary" onClick={addBusiness}><Plus size={16} />Buat Data Usaha</button>
+          {!created && <button type="button" className="btn btn-primary" onClick={addBusiness}><Plus size={16} />Buat Data Usaha</button>}
         </div>
       )}
 
