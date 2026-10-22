@@ -5,6 +5,10 @@ import { NextResponse } from 'next/server'
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
+  const requestedNext = requestUrl.searchParams.get('next')
+  const nextPath = requestedNext && requestedNext.startsWith('/') && !requestedNext.startsWith('//')
+    ? requestedNext
+    : '/dashboard'
 
   if (!code) {
     return NextResponse.redirect(new URL('/login?error=confirmation_failed', requestUrl.origin))
@@ -29,5 +33,5 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL('/login?error=confirmation_failed', requestUrl.origin))
   }
 
-  return NextResponse.redirect(new URL('/dashboard', requestUrl.origin))
+  return NextResponse.redirect(new URL(nextPath, requestUrl.origin))
 }
