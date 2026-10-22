@@ -181,7 +181,7 @@ function DokumenForm({ sb, companyId, jenis, pemasok, doc, items: initialItems, 
   function pilihProduk(idx: number, id: string) {
     const p = produk.find((x) => x.id === id)
     if (!p) return setItem(idx, { produk_id: null })
-    setItem(idx, { produk_id: p.id, deskripsi: p.nama, harga: MODUL === 'penjualan' ? p.harga_jual : p.harga_beli })
+    setItem(idx, { produk_id: p.id, deskripsi: p.nama, harga: p.harga_beli })
   }
 
   async function submit(e: React.FormEvent) {
