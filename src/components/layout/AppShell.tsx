@@ -18,7 +18,7 @@ export default function AppShell({ modules, companies, activeId, email, fullName
   const active = companies.find((c) => c.id === activeId)!
 
   function switchCompany(id: string) {
-    if (id === '__new') return router.push('/onboarding')
+    if (id === '__new') return router.push('/onboarding?new=1')
     document.cookie = `company_id=${id}; path=/; max-age=31536000; samesite=lax`
     router.push('/dashboard')
     router.refresh()
