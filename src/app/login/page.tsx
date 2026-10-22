@@ -71,7 +71,7 @@ export default function LoginPage() {
         <input className="input" type="password" placeholder="Kata sandi (min. 6 karakter)" minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} required />
         {error && <p className="text-sm text-red-600">{error}</p>}
         {notice && <p className="text-sm text-emerald-700">{notice}</p>}
-        {notice && mode === 'daftar' && <button type="button" className="w-full text-sm text-brand hover:underline" onClick={resendConfirmation} disabled={busy}>{busy ? 'Mengirim…' : 'Kirim ulang email konfirmasi'}</button>}
+        {mode === 'daftar' && <button type="button" className="w-full text-sm text-brand hover:underline" onClick={resendConfirmation} disabled={busy}>{busy ? 'Mengirim…' : 'Kirim ulang email konfirmasi'}</button>}
         <button className="btn btn-primary w-full" disabled={busy}>{busy ? 'Memproses…' : mode === 'masuk' ? 'Masuk' : 'Daftar'}</button>
         <button type="button" className="w-full text-sm text-brand hover:underline" onClick={() => setMode(mode === 'masuk' ? 'daftar' : 'masuk')}>
           {mode === 'masuk' ? 'Belum punya akun? Daftar' : 'Sudah punya akun? Masuk'}
