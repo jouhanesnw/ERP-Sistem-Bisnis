@@ -1,7 +1,7 @@
 export type Pemasok = { id: string; nama: string; telepon: string | null; email: string | null; alamat: string | null; aktif: boolean }
 export type Jenis = 'pesanan' | 'faktur'
 export type Dokumen = {
-  id: string; company_id: string; jenis: Jenis; nomor: string; no_referensi: string | null; tanggal: string; batas_tanggal: string | null
+  id: string; company_id: string; jenis: Jenis; nomor: string; no_referensi: string | null; gudang_id: string; tanggal: string; batas_tanggal: string | null
   pemasok_id: string; pemasok_nama: string; status: string; ppn_persen: number; catatan: string | null
   sumber_id: string | null; subtotal: number; total: number; terbayar: number; sisa: number
 }

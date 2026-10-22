@@ -21,6 +21,7 @@ function statusLabel(d: Dokumen) {
 
 const MODUL = 'pembelian'
 type ProdukPilihan = { id: string; kode: string | null; nama: string; satuan: string; harga_jual: number; harga_beli: number; stok: number; lacak_stok: boolean; aktif: boolean }
+type GudangPilihan = { id: string; kode: string; nama: string; is_default: boolean }
 const fmtN = (n: number) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(n)
 
 export default function DokumenManager({ companyId, jenis, pemasok, rekening, perm }: {
@@ -88,7 +89,7 @@ export default function DokumenManager({ companyId, jenis, pemasok, rekening, pe
     router.push('/pembelian/faktur')
     load()
   }
-  const canEdit = (d: Dokumen) => perm.edit && !(isFaktur && (d.status === 'batal' || Number(d.terbayar) > 0))
+  const canEdit = (d: Dokumen) => perm.edit && (!isFaktur || d.status === 'draft')
 
   return (
     <div className="space-y-4">
@@ -168,9 +169,12 @@ function DokumenForm({ sb, companyId, jenis, pemasok, doc, items: initialItems, 
   const [catatan, setCatatan] = useState(doc?.catatan ?? '')
   const [items, setItems] = useState<Item[]>(initialItems)
   const [produk, setProduk] = useState<ProdukPilihan[]>([])
-  useEffect(() => { sb.rpc('pd_pilihan', { cid: companyId, modul: MODUL }).then(({ data }) => setProduk((data ?? []) as ProdukPilihan[])) }, [sb, companyId])
+  const [gudang, setGudang] = useState<GudangPilihan[]>([])
+  const [gudangId, setGudangId] = useState(doc?.gudang_id ?? '')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  useEffect(() => { sb.rpc('gd_pilihan', { cid: companyId, modul: MODUL }).then(({ data, error }) => { if (error) return setError(error.message); const list = (data ?? []) as GudangPilihan[]; setGudang(list); setGudangId((old) => old || doc?.gudang_id || list.find((g) => g.is_default)?.id || list[0]?.id || '') }) }, [sb, companyId, doc?.gudang_id])
+  useEffect(() => { if (!gudangId) { setProduk([]); return } sb.rpc('pd_pilihan_gudang', { cid: companyId, modul: MODUL, gid: gudangId }).then(({ data, error }) => { if (error) return setError(error.message); setProduk((data ?? []) as ProdukPilihan[]) }) }, [sb, companyId, gudangId])
   const subtotal = items.reduce((s, i) => s + Number(i.qty || 0) * Number(i.harga || 0), 0)
   const ppnNilai = Math.round(subtotal * Number(ppn || 0) / 100)
   const setItem = (idx: number, patch: Partial<Item>) => setItems((list) => list.map((x, i) => i === idx ? { ...x, ...patch } : x))
@@ -184,7 +188,7 @@ function DokumenForm({ sb, companyId, jenis, pemasok, doc, items: initialItems, 
     e.preventDefault()
     setBusy(true); setError(null)
     const { error } = await sb.rpc('pb_simpan_dokumen', {
-      p: { id: doc?.id ?? null, company_id: companyId, jenis, pemasok_id: pemasokId, no_referensi: ref,
+      p: { id: doc?.id ?? null, company_id: companyId, jenis, pemasok_id: pemasokId, gudang_id: gudangId, no_referensi: ref,
         tanggal, batas_tanggal: batas || null, ppn_persen: Number(ppn || 0), catatan,
         items: items.map((i) => ({ deskripsi: i.deskripsi, qty: Number(i.qty), harga: Number(i.harga || 0), produk_id: i.produk_id ?? null })) },
     })
@@ -196,6 +200,11 @@ function DokumenForm({ sb, companyId, jenis, pemasok, doc, items: initialItems, 
   return (
     <form onSubmit={submit} className="card space-y-4 p-4">
       <h2 className="font-medium">{doc ? 'Ubah ' + doc.nomor : (jenis === 'faktur' ? 'Faktur baru' : 'Pesanan baru')}</h2>
+    <label className="block text-sm">Gudang penerimaan barang
+      <select className="input mt-1" value={gudangId} onChange={(e) => setGudangId(e.target.value)} required>
+        {gudang.map((g) => <option key={g.id} value={g.id}>{g.nama}{g.is_default ? ' (utama)' : ''}</option>)}
+      </select>
+    </label>
       {jenis === 'faktur' && <label className="block text-sm">No. faktur dari pemasok (opsional)<input className="input mt-1" value={ref} onChange={(e) => setRef(e.target.value)} /></label>}
       <div className="grid gap-3 sm:grid-cols-4">
         <label className="text-sm sm:col-span-2">Pemasok<select className="input mt-1" value={pemasokId} onChange={(e) => setPemasokId(e.target.value)} required>
@@ -228,7 +237,7 @@ function DokumenForm({ sb, companyId, jenis, pemasok, doc, items: initialItems, 
         </div>
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
-      <div className="flex gap-2"><button className="btn btn-primary" disabled={busy || !pemasokId}>{busy ? 'Menyimpan…' : 'Simpan'}</button><button type="button" className="btn" onClick={onCancel}>Batal</button></div>
+      <div className="flex gap-2"><button className="btn btn-primary" disabled={busy || !pemasokId || !gudangId}>{busy ? 'Menyimpan…' : 'Simpan'}</button><button type="button" className="btn" onClick={onCancel}>Batal</button></div>
     </form>
   )
 }

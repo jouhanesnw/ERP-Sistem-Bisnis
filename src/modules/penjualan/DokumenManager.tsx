@@ -10,6 +10,7 @@ import type { Dokumen, Item, Jenis, Pelanggan, PjPerm, RekeningPilihan } from '.
 
 const MODUL = 'penjualan'
 type ProdukPilihan = { id: string; kode: string | null; nama: string; satuan: string; harga_jual: number; harga_beli: number; stok: number; lacak_stok: boolean; aktif: boolean }
+type GudangPilihan = { id: string; kode: string; nama: string; is_default: boolean }
 const fmtN = (n: number) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(n)
 
 export default function DokumenManager({ companyId, jenis, pelanggan, rekening, perm }: {
@@ -68,7 +69,7 @@ export default function DokumenManager({ companyId, jenis, pelanggan, rekening, 
     router.push('/penjualan/faktur')
     load()
   }
-  const canEdit = (d: Dokumen) => perm.edit && !(isFaktur && (d.status === 'batal' || Number(d.terbayar) > 0))
+  const canEdit = (d: Dokumen) => perm.edit && (!isFaktur || d.status === 'draft')
   const customerList = pelanggan.filter((p) => p.aktif)
 
   return <div className="space-y-4">
@@ -123,9 +124,12 @@ function DokumenForm({ sb, companyId, jenis, pelanggan, doc, items: initialItems
   const [catatan, setCatatan] = useState(doc?.catatan ?? '')
   const [items, setItems] = useState<Item[]>(initialItems)
   const [produk, setProduk] = useState<ProdukPilihan[]>([])
-  useEffect(() => { sb.rpc('pd_pilihan', { cid: companyId, modul: MODUL }).then(({ data }) => setProduk((data ?? []) as ProdukPilihan[])) }, [sb, companyId])
+  const [gudang, setGudang] = useState<GudangPilihan[]>([])
+  const [gudangId, setGudangId] = useState(doc?.gudang_id ?? '')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  useEffect(() => { sb.rpc('gd_pilihan', { cid: companyId, modul: MODUL }).then(({ data, error }) => { if (error) return setError(error.message); const list = (data ?? []) as GudangPilihan[]; setGudang(list); setGudangId((old) => old || doc?.gudang_id || list.find((g) => g.is_default)?.id || list[0]?.id || '') }) }, [sb, companyId, doc?.gudang_id])
+  useEffect(() => { if (!gudangId) { setProduk([]); return } sb.rpc('pd_pilihan_gudang', { cid: companyId, modul: MODUL, gid: gudangId }).then(({ data, error }) => { if (error) return setError(error.message); setProduk((data ?? []) as ProdukPilihan[]) }) }, [sb, companyId, gudangId])
   const subtotal = items.reduce((s, i) => s + Number(i.qty || 0) * Number(i.harga || 0), 0)
   const setItem = (idx: number, patch: Partial<Item>) => setItems((old) => old.map((it, i) => i === idx ? { ...it, ...patch } : it))
   function pilihProduk(idx: number, id: string) {
@@ -135,13 +139,18 @@ function DokumenForm({ sb, companyId, jenis, pelanggan, doc, items: initialItems
   }
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setError(null)
-    const { error } = await sb.rpc('pj_simpan_dokumen', { p: { id: doc?.id ?? null, company_id: companyId, jenis, pelanggan_id: pel, tanggal, batas_tanggal: batas || null, ppn_persen: Number(ppn), catatan, items: items.map((i) => ({ deskripsi: i.deskripsi, qty: Number(i.qty), harga: Number(i.harga || 0), produk_id: i.produk_id ?? null })) } })
+    const { error } = await sb.rpc('pj_simpan_dokumen', { p: { id: doc?.id ?? null, company_id: companyId, jenis, pelanggan_id: pel, gudang_id: gudangId, tanggal, batas_tanggal: batas || null, ppn_persen: Number(ppn), catatan, items: items.map((i) => ({ deskripsi: i.deskripsi, qty: Number(i.qty), harga: Number(i.harga || 0), produk_id: i.produk_id ?? null })) } })
     setBusy(false)
     if (error) return setError(error.message)
     onDone()
   }
   return <form onSubmit={submit} className="card space-y-4 p-4">
     <h2 className="font-medium">{doc ? `Ubah ${doc.nomor}` : `Buat ${jenis === 'faktur' ? 'faktur' : 'penawaran'}`}</h2>
+    <label className="block text-sm">Gudang pengeluaran barang
+      <select className="input mt-1" value={gudangId} onChange={(e) => setGudangId(e.target.value)} required>
+        {gudang.map((g) => <option key={g.id} value={g.id}>{g.nama}{g.is_default ? ' (utama)' : ''}</option>)}
+      </select>
+    </label>
     <div className="grid gap-3 sm:grid-cols-2">
       <label className="text-sm sm:col-span-2">Pelanggan<select className="input mt-1" value={pel} onChange={(e) => setPel(e.target.value)} required>{pelanggan.map((p) => <option key={p.id} value={p.id}>{p.nama}</option>)}</select></label>
       <label className="text-sm">Tanggal<input type="date" className="input mt-1" value={tanggal} onChange={(e) => setTanggal(e.target.value)} required /></label>
@@ -163,7 +172,7 @@ function DokumenForm({ sb, companyId, jenis, pelanggan, doc, items: initialItems
     <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm">Catatan<input className="input mt-1" value={catatan} onChange={(e) => setCatatan(e.target.value)} /></label><label className="text-sm">PPN (%)<input className="input mt-1" type="number" min="0" max="100" step="any" value={ppn} onChange={(e) => setPpn(e.target.value)} /></label></div>
     <p className="text-right text-sm text-ink/60">Subtotal {rupiah(subtotal)} · Total {rupiah(Math.round(subtotal * (1 + Number(ppn || 0) / 100)) )}</p>
     {error && <p className="text-sm text-red-600">{error}</p>}
-    <div className="flex gap-2"><button className="btn btn-primary" disabled={busy || !pel}>{busy ? 'Menyimpan…' : 'Simpan'}</button><button type="button" className="btn" onClick={onCancel}>Batal</button></div>
+    <div className="flex gap-2"><button className="btn btn-primary" disabled={busy || !pel || !gudangId}>{busy ? 'Menyimpan…' : 'Simpan'}</button><button type="button" className="btn" onClick={onCancel}>Batal</button></div>
   </form>
 }
 
