@@ -49,6 +49,19 @@ export default function LoginPage() {
     setNotice('Akun berhasil dibuat. Buka email kamu dan klik tautan konfirmasi. Setelah itu kamu akan diarahkan kembali ke ERP untuk masuk.')
   }
 
+  async function resendConfirmation() {
+    setBusy(true)
+    setError(null)
+    const { error } = await supabaseBrowser().auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+    })
+    setBusy(false)
+    if (error) return setError(error.message)
+    setNotice('Email konfirmasi dikirim ulang. Buka email terbaru dan gunakan tautannya.')
+  }
+
   return (
     <main className="grid min-h-screen place-items-center p-4">
       <form onSubmit={submit} className="card w-full max-w-sm space-y-4 p-6">
@@ -58,6 +71,7 @@ export default function LoginPage() {
         <input className="input" type="password" placeholder="Kata sandi (min. 6 karakter)" minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} required />
         {error && <p className="text-sm text-red-600">{error}</p>}
         {notice && <p className="text-sm text-emerald-700">{notice}</p>}
+        {notice && mode === 'daftar' && <button type="button" className="w-full text-sm text-brand hover:underline" onClick={resendConfirmation} disabled={busy}>{busy ? 'Mengirim…' : 'Kirim ulang email konfirmasi'}</button>}
         <button className="btn btn-primary w-full" disabled={busy}>{busy ? 'Memproses…' : mode === 'masuk' ? 'Masuk' : 'Daftar'}</button>
         <button type="button" className="w-full text-sm text-brand hover:underline" onClick={() => setMode(mode === 'masuk' ? 'daftar' : 'masuk')}>
           {mode === 'masuk' ? 'Belum punya akun? Daftar' : 'Sudah punya akun? Masuk'}
