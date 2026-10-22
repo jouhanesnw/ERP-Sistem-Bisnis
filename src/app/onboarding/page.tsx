@@ -171,7 +171,7 @@ export default function OnboardingPage() {
     }
 
     document.cookie = `company_id=${companyId}; path=/; max-age=31536000; samesite=lax`
-    if (logoWarning) sessionStorage.setItem('onboarding_logo_notice', logoWarning)
+    if (logoWarning) window.alert(logoWarning)
     router.replace('/dashboard')
     router.refresh()
   }
