@@ -10,10 +10,11 @@ export const getAppContext = cache(async () => {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data } = await supabase
+  const { data, error: membershipsError } = await supabase
     .from('memberships')
     .select('id, role, company_id, companies(id, name)')
     .eq('user_id', user.id)
+  if (membershipsError) redirect('/data-usaha?error=membership-read')
   const memberships = (data ?? []) as any[]
   if (!memberships.length) redirect('/onboarding')
 
