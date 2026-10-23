@@ -74,7 +74,10 @@ export default function OnboardingPage() {
 
       if (membershipError) {
         if (alive) {
-          setInitError('Sistem belum dapat memeriksa data usaha akun ini: ' + membershipError.message + '. Jangan buat data usaha berulang kali. Buka Data Usaha Saya untuk melihat apa yang sudah tersimpan.')
+          const detail = membershipError.message.toLowerCase().includes('permission denied for table memberships')
+            ? 'Izin tabel memberships belum diberikan di database. Buka Supabase SQL Editor dan jalankan supabase/migrations/011_authenticated_table_grants.sql satu kali, lalu muat ulang halaman ini.'
+            : 'Sistem belum dapat membaca data keanggotaan: ' + membershipError.message
+          setInitError(detail + ' Jangan buat data usaha berulang kali; data yang sudah ada harus diperiksa terlebih dahulu.')
           setChecking(false)
         }
         return
