@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Menu, LogOut, UserRound, ChevronDown, Settings2, Building2, LoaderCircle } from 'lucide-react'
+import { Menu, LogOut, UserRound, ChevronDown, Settings2, Building2, Loader2 } from 'lucide-react'
 import Sidebar from './Sidebar'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import type { ModuleDef } from '@/config/modules'
@@ -59,8 +59,8 @@ export default function AppShell({ modules, companies, activeId, email, fullName
     setPendingPath('/dashboard')
     if (pendingTimer.current) clearTimeout(pendingTimer.current)
     pendingTimer.current = setTimeout(() => setPendingPath(null), 12000)
-    router.push('/dashboard')
-    router.refresh()
+    if (pathname === '/dashboard') router.refresh()
+    else router.push('/dashboard')
   }
 
   async function logout() {
@@ -123,7 +123,7 @@ export default function AppShell({ modules, companies, activeId, email, fullName
       </header>
       {pendingPath && (
         <div className="fixed right-4 top-[4.25rem] z-50 flex items-center gap-2 rounded-full border border-line bg-white px-3 py-2 text-xs text-ink shadow-md" role="status" aria-live="polite">
-          <LoaderCircle size={14} className="animate-spin text-brand" />
+          <Loader2 size={14} className="animate-spin text-brand" />
           Membuka halaman…
         </div>
       )}
