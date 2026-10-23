@@ -2,13 +2,13 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
-import { ChevronDown, LayoutDashboard, Wallet, ShoppingCart, Package, BellRing, Car, Settings, Boxes, BookOpen, type LucideIcon } from 'lucide-react'
+import { ChevronDown, LayoutDashboard, Wallet, ShoppingCart, Package, BellRing, Car, Settings, Boxes, BookOpen, LoaderCircle, type LucideIcon } from 'lucide-react'
 import type { ModuleDef } from '@/config/modules'
 
 const ICONS: Record<string, LucideIcon> = { LayoutDashboard, Wallet, ShoppingCart, Package, BellRing, Car, Settings, Boxes, BookOpen }
 
-export default function Sidebar({ modules, companyName, open, onClose }: {
-  modules: ModuleDef[]; companyName: string; open: boolean; onClose: () => void
+export default function Sidebar({ modules, companyName, open, onClose, pendingPath }: {
+  modules: ModuleDef[]; companyName: string; open: boolean; onClose: () => void; pendingPath?: string | null
 }) {
   const path = usePathname()
   const [expanded, setExpanded] = useState<string[]>(() =>
@@ -28,17 +28,21 @@ export default function Sidebar({ modules, companyName, open, onClose }: {
             const Icon = ICONS[m.icon]
             if (!m.children) {
               const active = path === m.href
+              const pending = pendingPath === m.href
               return (
-                <Link key={m.key} href={m.href!} onClick={onClose}
-                  className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm hover:bg-white/10 ${active ? 'bg-white/10 text-white' : ''}`}>
-                  {Icon && <Icon size={18} />}{m.label}
+                <Link key={m.key} href={m.href!} prefetch onClick={onClose}
+                  aria-current={active ? 'page' : undefined}
+                  className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-white/10 ${active ? 'bg-white/10 text-white' : ''} ${pending ? 'bg-white/10 text-white' : ''}`}>
+                  {Icon && <Icon size={18} />}
+                  {m.label}
+                  {pending && <LoaderCircle size={15} className="ml-auto animate-spin" />}
                 </Link>
               )
             }
             const isOpen = expanded.includes(m.key)
             return (
               <div key={m.key}>
-                <button onClick={() => toggle(m.key)} aria-expanded={isOpen}
+                <button type="button" onClick={() => toggle(m.key)} aria-expanded={isOpen}
                   className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm hover:bg-white/10">
                   {Icon && <Icon size={18} />}
                   <span className="flex-1 text-left">{m.label}</span>
@@ -46,14 +50,20 @@ export default function Sidebar({ modules, companyName, open, onClose }: {
                 </button>
                 {isOpen && (
                   <ul className="ml-5 mt-0.5 space-y-0.5 border-l border-white/15 pl-3">
-                    {m.children.map((c) => (
-                      <li key={c.href}>
-                        <Link href={c.href} onClick={onClose}
-                          className={`block rounded-md px-3 py-1.5 text-sm hover:bg-white/10 ${path === c.href ? 'bg-brand text-white' : ''}`}>
-                          {c.label}
-                        </Link>
-                      </li>
-                    ))}
+                    {m.children.map((c) => {
+                      const active = path === c.href
+                      const pending = pendingPath === c.href
+                      return (
+                        <li key={c.href}>
+                          <Link href={c.href} prefetch onClick={onClose}
+                            aria-current={active ? 'page' : undefined}
+                            className={`flex items-center justify-between gap-2 rounded-md px-3 py-1.5 text-sm transition-colors hover:bg-white/10 ${active ? 'bg-brand text-white' : ''} ${pending ? 'bg-white/10 text-white' : ''}`}>
+                            <span>{c.label}</span>
+                            {pending && <LoaderCircle size={14} className="shrink-0 animate-spin" />}
+                          </Link>
+                        </li>
+                      )
+                    })}
                   </ul>
                 )}
               </div>
