@@ -43,7 +43,10 @@ export default function BusinessCards() {
 
     if (queryError) {
       setLoading(false)
-      setError('Data usaha belum dapat dibaca dari database: ' + queryError.message)
+      const detail = queryError.message.toLowerCase().includes('permission denied for table memberships')
+        ? 'Izin tabel memberships belum diberikan. Jalankan supabase/migrations/011_authenticated_table_grants.sql di Supabase SQL Editor, lalu tekan Muat Ulang.'
+        : 'Data usaha belum dapat dibaca dari database: ' + queryError.message
+      setError(detail)
       return
     }
 
