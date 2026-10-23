@@ -18,24 +18,28 @@ export const getAppContext = cache(async () => {
   const memberships = (data ?? []) as any[]
   if (!memberships.length) redirect('/onboarding')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('full_name')
-    .eq('id', user.id)
-    .maybeSingle()
-  const fullName = profile?.full_name?.trim()
+  const wanted = cookies().get('company_id')?.value
+  const active = memberships.find((m) => m.company_id === wanted) ?? memberships[0]
+
+  // Load account profile and active-company permissions concurrently.
+  // Both depend on the resolved user/company but not on each other.
+  const [profileResult, accessResult] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', user.id)
+      .maybeSingle(),
+    supabase
+      .from('module_access')
+      .select('module, can_view, can_create, can_edit, can_delete')
+      .eq('membership_id', active.id),
+  ])
+  const fullName = profileResult.data?.full_name?.trim()
     || user.user_metadata?.full_name
     || user.user_metadata?.name
     || user.email?.split('@')[0]
     || 'Pengguna'
-
-  const wanted = cookies().get('company_id')?.value
-  const active = memberships.find((m) => m.company_id === wanted) ?? memberships[0]
-
-  const { data: access } = await supabase
-    .from('module_access')
-    .select('module, can_view, can_create, can_edit, can_delete')
-    .eq('membership_id', active.id)
+  const access = accessResult.data
 
   return {
     user: { id: user.id, email: user.email ?? '', fullName },
