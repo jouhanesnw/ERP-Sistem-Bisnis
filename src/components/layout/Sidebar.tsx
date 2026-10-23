@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
-import { ChevronDown, LayoutDashboard, Wallet, ShoppingCart, Package, BellRing, Car, Settings, Boxes, BookOpen, LoaderCircle, type LucideIcon } from 'lucide-react'
+import { ChevronDown, LayoutDashboard, Wallet, ShoppingCart, Package, BellRing, Car, Settings, Boxes, BookOpen, Loader2, type LucideIcon } from 'lucide-react'
 import type { ModuleDef } from '@/config/modules'
 
 const ICONS: Record<string, LucideIcon> = { LayoutDashboard, Wallet, ShoppingCart, Package, BellRing, Car, Settings, Boxes, BookOpen }
@@ -35,7 +35,7 @@ export default function Sidebar({ modules, companyName, open, onClose, pendingPa
                   className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-white/10 ${active ? 'bg-white/10 text-white' : ''} ${pending ? 'bg-white/10 text-white' : ''}`}>
                   {Icon && <Icon size={18} />}
                   {m.label}
-                  {pending && <LoaderCircle size={15} className="ml-auto animate-spin" />}
+                  {pending && <Loader2 size={15} className="ml-auto animate-spin" />}
                 </Link>
               )
             }
@@ -59,7 +59,7 @@ export default function Sidebar({ modules, companyName, open, onClose, pendingPa
                             aria-current={active ? 'page' : undefined}
                             className={`flex items-center justify-between gap-2 rounded-md px-3 py-1.5 text-sm transition-colors hover:bg-white/10 ${active ? 'bg-brand text-white' : ''} ${pending ? 'bg-white/10 text-white' : ''}`}>
                             <span>{c.label}</span>
-                            {pending && <LoaderCircle size={14} className="shrink-0 animate-spin" />}
+                            {pending && <Loader2 size={14} className="shrink-0 animate-spin" />}
                           </Link>
                         </li>
                       )
