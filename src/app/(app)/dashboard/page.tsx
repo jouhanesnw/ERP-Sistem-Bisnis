@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import {
-  ArrowRight, ArrowUpRight, Banknote, BellRing, BookOpen, Boxes, Building2,
-  CarFront, LayoutDashboard, Package, Settings, ShoppingCart, Users, Wallet,
+  ArrowRight, ArrowUpRight, BellRing, BookOpen, Boxes, Building2,
+  CarFront, LayoutDashboard, Package, Settings, ShoppingCart, ShieldCheck, Users, Wallet,
   type LucideIcon,
 } from 'lucide-react'
 import { getAppContext } from '@/lib/context'
@@ -70,7 +70,7 @@ export default async function DashboardPage() {
           <div><p className="text-sm text-ink/60">Data usaha dalam akun</p><p className="text-xl font-semibold tabular-nums">{ctx.companies.length}</p></div>
         </div>
         <div className="card flex items-center gap-3 p-4">
-          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand/10 text-brand"><ShieldIcon /></span>
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand/10 text-brand"><ShieldCheck size={21} /></span>
           <div><p className="text-sm text-ink/60">Status akses</p><p className="text-base font-semibold">Aktif</p></div>
         </div>
       </section>
@@ -134,6 +134,3 @@ export default async function DashboardPage() {
   )
 }
 
-function ShieldIcon() {
-  return <Banknote size={21} />
-}
