@@ -12,6 +12,12 @@ export async function getPjContext(): Promise<{ companyId: string; perm: PjPerm 
   }
 }
 
+export async function loadPelanggan(companyId: string) {
+  const sb = supabaseServer()
+  const { data } = await sb.from('pj_pelanggan').select('*').eq('company_id', companyId).order('nama')
+  return (data ?? []) as Pelanggan[]
+}
+
 export async function loadPjBase(companyId: string) {
   const sb = supabaseServer()
   const [p, r] = await Promise.all([

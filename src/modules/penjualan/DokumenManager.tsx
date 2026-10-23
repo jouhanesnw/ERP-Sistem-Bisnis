@@ -13,8 +13,8 @@ type ProdukPilihan = { id: string; kode: string | null; nama: string; satuan: st
 type GudangPilihan = { id: string; kode: string; nama: string; is_default: boolean }
 const fmtN = (n: number) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(n)
 
-export default function DokumenManager({ companyId, jenis, pelanggan, rekening, perm }: {
-  companyId: string; jenis: Jenis; pelanggan: Pelanggan[]; rekening: RekeningPilihan[]; perm: PjPerm
+export default function DokumenManager({ companyId, jenis, pelanggan, perm }: {
+  companyId: string; jenis: Jenis; pelanggan: Pelanggan[]; perm: PjPerm
 }) {
   const sb = useMemo(() => supabaseBrowser(), [])
   const router = useRouter()
@@ -89,7 +89,7 @@ export default function DokumenManager({ companyId, jenis, pelanggan, rekening, 
     </div>
     {error && <p className="text-sm text-red-600">{error}</p>}
     {form && <DokumenForm key={form.doc?.id ?? 'new'} sb={sb} companyId={companyId} jenis={jenis} pelanggan={customerList.concat(pelanggan.filter((p) => !p.aktif && p.id === form.doc?.pelanggan_id))} doc={form.doc} items={form.items} onDone={() => { setForm(null); load() }} onCancel={() => setForm(null)} />}
-    {bayar && <BayarForm key={bayar.id} sb={sb} dokumen={bayar} rekening={rekening.filter((r) => r.aktif)} onDone={() => { setBayar(null); load() }} onCancel={() => setBayar(null)} />}
+    {bayar && <BayarForm key={bayar.id} sb={sb} companyId={companyId} dokumen={bayar} onDone={() => { setBayar(null); load() }} onCancel={() => setBayar(null)} />}
     <div className="card overflow-x-auto"><table className="w-full text-left text-sm">
       <thead><tr className="border-b border-line text-ink/60"><th className="p-3">Nomor</th><th className="p-3">Pelanggan</th><th className="p-3">{isFaktur ? 'Jatuh tempo' : 'Berlaku sampai'}</th><th className="p-3 text-right">Total</th>{isFaktur && <th className="p-3 text-right">Sisa</th>}<th className="p-3">Status</th><th className="p-3" /></tr></thead>
       <tbody>{visible.map((d) => <tr key={d.id} className="border-b border-line align-top last:border-0">
@@ -176,15 +176,30 @@ function DokumenForm({ sb, companyId, jenis, pelanggan, doc, items: initialItems
   </form>
 }
 
-function BayarForm({ sb, dokumen, rekening, onDone, onCancel }: {
-  sb: ReturnType<typeof supabaseBrowser>; dokumen: Dokumen; rekening: RekeningPilihan[]; onDone: () => void; onCancel: () => void
+function BayarForm({ sb, companyId, dokumen, onDone, onCancel }: {
+  sb: ReturnType<typeof supabaseBrowser>; companyId: string; dokumen: Dokumen; onDone: () => void; onCancel: () => void
 }) {
   const [tanggal, setTanggal] = useState(isoDate(new Date()))
   const [jumlah, setJumlah] = useState(String(dokumen.sisa))
-  const [rek, setRek] = useState(rekening[0]?.id ?? '')
+  const [rekening, setRekening] = useState<RekeningPilihan[]>([])
+  const [loadingRekening, setLoadingRekening] = useState(true)
+  const [rek, setRek] = useState('')
   const [catatan, setCatatan] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    let current = true
+    sb.rpc('pj_rekening_pilihan', { cid: companyId }).then(({ data, error }) => {
+      if (!current) return
+      setLoadingRekening(false)
+      if (error) return setError(error.message)
+      const list = ((data ?? []) as RekeningPilihan[]).filter((item) => item.aktif)
+      setRekening(list)
+      setRek((old) => old || list[0]?.id || '')
+    })
+    return () => { current = false }
+  }, [sb, companyId])
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setError(null)
     const { error } = await sb.rpc('pj_catat_pembayaran', { p_dokumen: dokumen.id, p_tanggal: tanggal, p_jumlah: Number(jumlah), p_rekening: rek, p_catatan: catatan || null })
@@ -196,9 +211,9 @@ function BayarForm({ sb, dokumen, rekening, onDone, onCancel }: {
     <h2 className="font-medium sm:col-span-2">Pembayaran {dokumen.nomor} · sisa {rupiah(dokumen.sisa)}</h2>
     <label className="text-sm">Tanggal<input type="date" className="input mt-1" value={tanggal} onChange={(e) => setTanggal(e.target.value)} required /></label>
     <label className="text-sm">Jumlah (Rp)<input type="number" min="1" max={dokumen.sisa} step="1" className="input mt-1" value={jumlah} onChange={(e) => setJumlah(e.target.value)} required /></label>
-    <label className="text-sm">Masuk ke rekening<select className="input mt-1" value={rek} onChange={(e) => setRek(e.target.value)} required>{rekening.map((r) => <option key={r.id} value={r.id}>{r.nama}</option>)}</select></label>
+    <label className="text-sm">Masuk ke rekening<select className="input mt-1" value={rek} onChange={(e) => setRek(e.target.value)} required disabled={loadingRekening || !rekening.length}><option value="">{loadingRekening ? 'Memuat rekening…' : 'Pilih rekening'}</option>{rekening.map((r) => <option key={r.id} value={r.id}>{r.nama}</option>)}</select></label>
     <label className="text-sm">Catatan<input className="input mt-1" value={catatan} onChange={(e) => setCatatan(e.target.value)} /></label>
-    {!rekening.length && <p className="text-sm text-red-600 sm:col-span-2">Belum ada rekening aktif. Buat dulu di Kas &gt; Rekening Kas.</p>}
+    {!loadingRekening && !rekening.length && !error && <p className="text-sm text-red-600 sm:col-span-2">Belum ada rekening aktif. Buat dulu di Kas &gt; Rekening Kas.</p>}
     {error && <p className="text-sm text-red-600 sm:col-span-2">{error}</p>}
     <div className="flex gap-2 sm:col-span-2"><button className="btn btn-primary" disabled={busy || !rek}>{busy ? 'Menyimpan…' : 'Catat pembayaran'}</button><button type="button" className="btn" onClick={onCancel}>Batal</button></div>
   </form>
