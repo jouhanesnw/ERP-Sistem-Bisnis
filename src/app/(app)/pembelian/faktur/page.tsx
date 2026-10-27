@@ -4,6 +4,6 @@ import DokumenManager from '@/modules/pembelian/DokumenManager'
 export default async function Page() {
   const k = await getPbContext()
   if (!k) return <Denied module="Pembelian" />
-  const { pemasok, rekening } = await loadPbBase(k.companyId)
-  return <DokumenManager companyId={k.companyId} jenis="faktur" pemasok={pemasok} rekening={rekening} perm={k.perm} />
+  const { pemasok, rekening, currencies } = await loadPbBase(k.companyId)
+  return <DokumenManager companyId={k.companyId} jenis="faktur" pemasok={pemasok} rekening={rekening} perm={k.perm} currencies={currencies} />
 }
