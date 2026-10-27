@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { ChevronDown, LayoutDashboard, Wallet, ShoppingCart, Package, BellRing, Car, Settings, Boxes, BookOpen, Loader2, type LucideIcon } from 'lucide-react'
 import type { ModuleDef } from '@/config/modules'
@@ -11,7 +11,6 @@ export default function Sidebar({ modules, companyName, open, onClose, pendingPa
   modules: ModuleDef[]; companyName: string; open: boolean; onClose: () => void; pendingPath?: string | null
 }) {
   const path = usePathname()
-  const router = useRouter()
   const [expanded, setExpanded] = useState<string[]>(() =>
     modules.filter((m) => m.children?.some((c) => path.startsWith(c.href))).map((m) => m.key))
   const toggle = (k: string) => setExpanded((e) => (e.includes(k) ? e.filter((x) => x !== k) : [...e, k]))
@@ -31,7 +30,7 @@ export default function Sidebar({ modules, companyName, open, onClose, pendingPa
               const active = path === m.href
               const pending = pendingPath === m.href
               return (
-                <Link key={m.key} href={m.href!} prefetch={false} onMouseEnter={() => router.prefetch(m.href!)} onTouchStart={() => router.prefetch(m.href!)} onClick={onClose}
+                <Link key={m.key} href={m.href!} prefetch onClick={onClose}
                   aria-current={active ? 'page' : undefined}
                   className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-white/10 ${active ? 'bg-white/10 text-white' : ''} ${pending ? 'bg-white/10 text-white' : ''}`}>
                   {Icon && <Icon size={18} />}
@@ -56,7 +55,7 @@ export default function Sidebar({ modules, companyName, open, onClose, pendingPa
                       const pending = pendingPath === c.href
                       return (
                         <li key={c.href}>
-                          <Link href={c.href} prefetch={false} onMouseEnter={() => router.prefetch(c.href)} onTouchStart={() => router.prefetch(c.href)} onClick={onClose}
+                          <Link href={c.href} prefetch onClick={onClose}
                             aria-current={active ? 'page' : undefined}
                             className={`flex items-center justify-between gap-2 rounded-md px-3 py-1.5 text-sm transition-colors hover:bg-white/10 ${active ? 'bg-brand text-white' : ''} ${pending ? 'bg-white/10 text-white' : ''}`}>
                             <span>{c.label}</span>
