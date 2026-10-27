@@ -3,8 +3,32 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useMemo, useState, type MouseEvent, type SyntheticEvent } from 'react'
 import {
-  Building2, BookOpen, Wallet, ShoppingCart, Package, Boxes, Landmark,
-  ClipboardList, Settings, Database, Power, ChevronRight, Loader2,
+  Activity,
+  ArrowLeftRight,
+  BadgeDollarSign,
+  BookOpen,
+  Building2,
+  CalendarDays,
+  ChartNoAxesColumn,
+  ClipboardCheck,
+  ClipboardList,
+  CreditCard,
+  Database,
+  FileText,
+  Landmark,
+  Loader2,
+  Package,
+  Power,
+  Receipt,
+  Settings,
+  ShoppingCart,
+  Tags,
+  Truck,
+  UserRound,
+  Users,
+  Wallet,
+  Boxes,
+  ChevronRight,
   type LucideIcon,
 } from 'lucide-react'
 import type { ModuleDef, NavChild } from '@/config/modules'
@@ -13,10 +37,55 @@ type SidebarItem = {
   key: string
   label: string
   icon: LucideIcon
-  href?: string
   children?: NavChild[]
   disabled?: boolean
   separatorBefore?: boolean
+}
+
+const TILE_ICONS: LucideIcon[] = [
+  CreditCard,
+  Building2,
+  Users,
+  Receipt,
+  BadgeDollarSign,
+  Truck,
+  FileText,
+  ArrowLeftRight,
+  Wallet,
+  Package,
+  ClipboardCheck,
+  Tags,
+  UserRound,
+  CalendarDays,
+  Activity,
+]
+
+function getTileIcon(label: string, index: number): LucideIcon {
+  const text = label.toLowerCase()
+  if (text.includes('pelanggan') || text.includes('kontak')) return UserRound
+  if (text.includes('pemasok') || text.includes('perusahaan') || text.includes('cabang')) return Building2
+  if (text.includes('faktur') || text.includes('jurnal')) return Receipt
+  if (text.includes('pembayaran') || text.includes('kas') || text.includes('rekening')) return Wallet
+  if (text.includes('transfer')) return ArrowLeftRight
+  if (text.includes('gudang') || text.includes('stok') || text.includes('persediaan')) return Boxes
+  if (text.includes('produk') || text.includes('pesanan')) return Package
+  if (text.includes('laporan') || text.includes('aktivitas')) return ChartNoAxesColumn
+  if (text.includes('akun') || text.includes('buku besar')) return BookOpen
+  if (text.includes('pengaturan') || text.includes('anggota') || text.includes('akses')) return Users
+  if (text.includes('kategori')) return Tags
+  if (text.includes('kalender') || text.includes('tanggal')) return CalendarDays
+  return TILE_ICONS[index % TILE_ICONS.length]
+}
+
+function getTileTone(label: string) {
+  const text = label.toLowerCase()
+  if (text.includes('berulang') || text.includes('akhir bulan') || text.includes('jatuh tempo')) {
+    return 'border-[#78c94f] bg-[#dcfbd1] text-[#4d7c0f]'
+  }
+  if (text.includes('favorit') || text.includes('kalender') || text.includes('aktivitas') || text.includes('notifikasi')) {
+    return 'border-[#bd75ee] bg-[#f3e2ff] text-[#6b21a8]'
+  }
+  return 'border-[#46a9fb] bg-[#d7eaff] text-[#075985]'
 }
 
 export default function Sidebar({ modules, companyName, open, onClose, onLogout, pendingPath }: {
@@ -28,17 +97,28 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
   pendingPath?: string | null
 }) {
   const path = usePathname()
-  const [flyout, setFlyout] = useState<{ key: string; top: number } | null>(null)
+  const [panel, setPanel] = useState<string | null>(null)
   const [tooltip, setTooltip] = useState<{ label: string; top: number } | null>(null)
   const byKey = useMemo(() => Object.fromEntries(modules.map((module) => [module.key, module])), [modules])
 
   const items = useMemo<SidebarItem[]>(() => {
     const result: SidebarItem[] = []
     if (byKey.pengaturan) {
-      result.push({ key: 'perusahaan', label: 'Perusahaan', icon: Building2, href: '/pengaturan/perusahaan' })
+      const companySettings = (byKey.pengaturan.children ?? []).filter((child) => child.href === '/pengaturan/perusahaan')
+      result.push({
+        key: 'perusahaan',
+        label: 'Perusahaan',
+        icon: Building2,
+        children: companySettings.length ? companySettings : [{ label: 'Profil Perusahaan', href: '/pengaturan/perusahaan' }],
+      })
     }
     if (byKey.akuntansi) {
-      result.push({ key: 'buku-besar', label: 'Buku Besar', icon: BookOpen, href: '/akuntansi/buku-besar' })
+      result.push({
+        key: 'buku-besar',
+        label: 'Buku Besar',
+        icon: BookOpen,
+        children: byKey.akuntansi.children ?? [{ label: 'Buku Besar', href: '/akuntansi/buku-besar' }],
+      })
     }
     if (byKey.kas) {
       result.push({ key: 'kas', label: 'Kas & Bank', icon: Wallet, children: byKey.kas.children ?? [] })
@@ -53,6 +133,7 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
       result.push({ key: 'persediaan', label: 'Persediaan', icon: Boxes, children: byKey.produk.children ?? [] })
     }
     result.push({ key: 'aset-tetap', label: 'Aset Tetap', icon: Landmark, disabled: true })
+
     const reports: NavChild[] = [
       ...(byKey.kas?.children?.filter((child) => child.href === '/kas/laporan') ?? []),
       ...(byKey.akuntansi?.children?.filter((child) => child.href === '/akuntansi/laporan') ?? []),
@@ -72,45 +153,40 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
     return result
   }, [byKey])
 
-  const activeFlyout = flyout ? items.find((item) => item.key === flyout.key) : undefined
+  const activePanel = panel ? items.find((item) => item.key === panel) : undefined
 
   useEffect(() => {
-    setFlyout(null)
+    setPanel(null)
+    setTooltip(null)
   }, [path])
 
   useEffect(() => {
-    if (!flyout) return
+    if (!panel) return
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') setFlyout(null)
+      if (event.key === 'Escape') setPanel(null)
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [flyout])
+  }, [panel])
 
   function showTooltip(event: SyntheticEvent<HTMLElement>, label: string) {
     const rect = event.currentTarget.getBoundingClientRect()
     setTooltip({ label, top: rect.top + rect.height / 2 })
   }
 
-  function toggleFlyout(event: MouseEvent<HTMLButtonElement>, item: SidebarItem) {
+  function togglePanel(event: MouseEvent<HTMLButtonElement>, item: SidebarItem) {
     if (!item.children?.length) return
-    if (flyout?.key === item.key) {
-      setFlyout(null)
-      return
-    }
-    const rect = event.currentTarget.getBoundingClientRect()
-    const estimatedHeight = Math.min(window.innerHeight - 16, item.children.length * 40 + 64)
-    const top = Math.max(8, Math.min(rect.top, window.innerHeight - estimatedHeight - 8))
-    setFlyout({ key: item.key, top })
+    setTooltip(null)
+    setPanel((current) => current === item.key ? null : item.key)
   }
 
   function closeMenus() {
-    setFlyout(null)
+    setPanel(null)
+    setTooltip(null)
     onClose()
   }
 
   function isItemActive(item: SidebarItem) {
-    if (item.href) return path === item.href
     return item.children?.some((child) => path === child.href || path.startsWith(child.href + '/')) ?? false
   }
 
@@ -125,29 +201,12 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
           {items.map((item) => {
             const Icon = item.icon
             const active = isItemActive(item)
-            const pending = !!item.href && pendingPath === item.href
-            const selected = flyout?.key === item.key
+            const selected = panel === item.key
 
             return (
               <div key={item.key}>
                 {item.separatorBefore && <div className="mx-2 my-3 border-t border-white/20" aria-hidden="true" />}
-                {item.children?.length ? (
-                  <button
-                    type="button"
-                    onClick={(event) => toggleFlyout(event, item)}
-                    aria-label={item.label}
-                    aria-expanded={selected}
-                    onMouseEnter={(event) => showTooltip(event, item.label)}
-                    onMouseLeave={() => setTooltip(null)}
-                    onFocus={(event) => showTooltip(event, item.label)}
-                    onBlur={() => setTooltip(null)}
-                    className={`group relative flex h-12 w-full items-center justify-center rounded-xl transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${active || selected ? 'bg-white/15 text-white' : 'text-white/85'}`}
-                  >
-                    {active && <span className="absolute bottom-2 left-0 top-2 w-1 rounded-r-full bg-[#ef466b]" />}
-                    <Icon size={23} strokeWidth={1.8} />
-                    {pending && <Loader2 size={12} className="absolute right-1 top-1 animate-spin" />}
-                  </button>
-                ) : item.disabled ? (
+                {item.disabled ? (
                   <button
                     type="button"
                     disabled
@@ -161,22 +220,21 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
                     <Icon size={23} strokeWidth={1.8} />
                   </button>
                 ) : (
-                  <Link
-                    href={item.href!}
-                    prefetch
-                    onClick={closeMenus}
-                    aria-current={active ? 'page' : undefined}
+                  <button
+                    type="button"
+                    onClick={(event) => togglePanel(event, item)}
                     aria-label={item.label}
+                    aria-expanded={selected}
                     onMouseEnter={(event) => showTooltip(event, item.label)}
                     onMouseLeave={() => setTooltip(null)}
                     onFocus={(event) => showTooltip(event, item.label)}
                     onBlur={() => setTooltip(null)}
-                    className={`group relative flex h-12 items-center justify-center rounded-xl transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${active ? 'bg-white/15 text-white' : 'text-white/85'} ${pending ? 'bg-white/10' : ''}`}
+                    className={`group relative flex h-12 w-full items-center justify-center rounded-xl transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${active || selected ? 'bg-white/15 text-white' : 'text-white/85'}`}
                   >
                     {active && <span className="absolute bottom-2 left-0 top-2 w-1 rounded-r-full bg-[#ef466b]" />}
                     <Icon size={23} strokeWidth={1.8} />
-                    {pending && <Loader2 size={12} className="absolute right-1 top-1 animate-spin" />}
-                  </Link>
+                    {selected && <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[#ef466b]" />}
+                  </button>
                 )}
               </div>
             )
@@ -189,9 +247,9 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
             prefetch
             onClick={closeMenus}
             aria-label="Data Usaha"
-            onMouseEnter={(event) => showTooltip(event, "Data Usaha")}
+            onMouseEnter={(event) => showTooltip(event, 'Data Usaha')}
             onMouseLeave={() => setTooltip(null)}
-            onFocus={(event) => showTooltip(event, "Data Usaha")}
+            onFocus={(event) => showTooltip(event, 'Data Usaha')}
             onBlur={() => setTooltip(null)}
             className="group relative flex h-12 items-center justify-center rounded-xl text-white/85 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
           >
@@ -199,11 +257,11 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
           </Link>
           <button
             type="button"
-            onClick={() => { setFlyout(null); onLogout() }}
+            onClick={() => { setPanel(null); setTooltip(null); onLogout() }}
             aria-label="Keluar"
-            onMouseEnter={(event) => showTooltip(event, "Keluar")}
+            onMouseEnter={(event) => showTooltip(event, 'Keluar')}
             onMouseLeave={() => setTooltip(null)}
-            onFocus={(event) => showTooltip(event, "Keluar")}
+            onFocus={(event) => showTooltip(event, 'Keluar')}
             onBlur={() => setTooltip(null)}
             className="group relative flex h-12 w-full items-center justify-center rounded-xl text-white/85 transition-colors hover:bg-red-500/20 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
           >
@@ -212,44 +270,71 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
         </div>
       </aside>
 
-      {tooltip ? <div className="pointer-events-none fixed left-[5.25rem] z-[70] -translate-y-1/2 whitespace-nowrap rounded-md bg-slate-950 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg" style={{ top: tooltip.top }}>{tooltip.label}</div> : null}
-
-      {activeFlyout?.children?.length ? (
+      {tooltip ? (
         <div
-          className="fixed left-20 z-50 w-60 overflow-hidden rounded-r-xl rounded-bl-xl border border-line bg-white text-ink shadow-2xl"
-          style={{ top: flyout?.top ?? 8, maxHeight: 'calc(100vh - 16px)' }}
-          aria-label={activeFlyout.label}
+          className="pointer-events-none fixed left-[5.25rem] z-[70] -translate-y-1/2 whitespace-nowrap rounded-md bg-slate-950 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg"
+          style={{ top: tooltip.top }}
         >
-          <div className="flex items-center justify-between border-b border-line px-4 py-3">
-            <div className="flex items-center gap-2">
-              <activeFlyout.icon size={18} className="text-brand" />
-              <p className="text-sm font-semibold">{activeFlyout.label}</p>
-            </div>
-            <button type="button" onClick={() => setFlyout(null)} aria-label="Tutup submenu" className="rounded-md p-1 text-ink/60 hover:bg-canvas">
-              <ChevronRight size={16} />
-            </button>
-          </div>
-          <ul className="max-h-[calc(100vh-4rem)] space-y-0.5 overflow-y-auto p-2">
-            {activeFlyout.children.map((child) => {
-              const active = path === child.href || path.startsWith(child.href + '/')
-              const pending = pendingPath === child.href
-              return (
-                <li key={child.href}>
-                  <Link
-                    href={child.href}
-                    prefetch
-                    onClick={closeMenus}
-                    aria-current={active ? 'page' : undefined}
-                    className={`flex items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-canvas ${active ? 'bg-brand/10 font-medium text-brand' : 'text-ink'}`}
-                  >
-                    <span>{child.label}</span>
-                    {pending && <Loader2 size={14} className="shrink-0 animate-spin text-brand" />}
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
+          {tooltip.label}
         </div>
+      ) : null}
+
+      {activePanel?.children?.length ? (
+        <>
+          <button
+            type="button"
+            aria-label="Tutup panel menu"
+            className="fixed bottom-0 left-20 right-0 top-16 z-[45] cursor-default bg-black/[0.025]"
+            onClick={() => setPanel(null)}
+          />
+          <section
+            className="fixed left-20 top-[5rem] z-50 flex max-h-[calc(100vh-6rem)] w-[calc(100vw-6rem)] max-w-[960px] flex-col overflow-hidden rounded-xl border border-[#e6e6e6] bg-[#fbfbfb] text-[#3d3d3d] shadow-[0_12px_35px_rgba(0,0,0,0.28)]"
+            aria-label={activePanel.label}
+            aria-modal="false"
+            role="dialog"
+          >
+            <div className="shrink-0 px-4 pb-4 pt-4 sm:px-5 sm:pt-5">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-xl font-normal text-[#555] sm:text-2xl">{activePanel.label}</h2>
+                <button
+                  type="button"
+                  onClick={() => setPanel(null)}
+                  aria-label="Tutup panel menu"
+                  className="rounded-md p-1.5 text-[#777] hover:bg-black/5 hover:text-[#333]"
+                >
+                  <ChevronRight size={20} className="rotate-180" />
+                </button>
+              </div>
+              <div className="mt-4 h-[3px] w-full bg-[#ef466b]" />
+            </div>
+
+            <div className="overflow-y-auto px-4 pb-5 sm:px-5">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+                {activePanel.children.map((child, index) => {
+                  const TileIcon = getTileIcon(child.label, index)
+                  const active = path === child.href || path.startsWith(child.href + '/')
+                  const pending = pendingPath === child.href
+                  return (
+                    <Link
+                      key={child.href}
+                      href={child.href}
+                      prefetch
+                      onClick={closeMenus}
+                      aria-current={active ? 'page' : undefined}
+                      className={`group flex min-h-[145px] flex-col items-center justify-between gap-3 rounded-lg border p-4 text-center shadow-sm transition duration-150 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1685d1] sm:min-h-[156px] ${getTileTone(child.label)} ${active ? 'ring-2 ring-inset ring-[#1685d1]' : ''}`}
+                    >
+                      <span className="flex flex-1 items-center justify-center">
+                        <TileIcon size={42} strokeWidth={1.8} className="transition-transform group-hover:scale-105" />
+                      </span>
+                      <span className="text-sm font-medium leading-snug text-[#414b56] sm:text-base">{child.label}</span>
+                      {pending ? <Loader2 size={15} className="absolute animate-spin" /> : null}
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+          </section>
+        </>
       ) : null}
     </>
   )
