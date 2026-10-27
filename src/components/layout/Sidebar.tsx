@@ -157,7 +157,22 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
       })
     }
     if (byKey.kas) {
-      result.push({ key: 'kas', label: 'Kas & Bank', icon: Wallet, children: byKey.kas.children ?? [] })
+      result.push({
+        key: 'kas',
+        label: 'Kas & Bank',
+        icon: Wallet,
+        children: [
+          { label: 'Pembayaran', href: '/kas/keluar', icon: Wallet, tone: 'green' },
+          { label: 'Penerimaan', href: '/kas/masuk', icon: BadgeDollarSign, tone: 'green' },
+          { label: 'Transfer Bank', href: '/kas/transfer', icon: Landmark, tone: 'green' },
+          { label: 'SmartLink e-Banking', icon: FileText, tone: 'blue', disabled: true },
+          { label: 'Rekening Koran', icon: CreditCard, tone: 'purple', disabled: true },
+          { label: 'Histori Bank', icon: Building2, tone: 'purple', disabled: true },
+          { label: 'Rekonsiliasi Bank', icon: ClipboardCheck, tone: 'purple', disabled: true },
+          { label: 'SmartLink Virtual Account', icon: FileText, tone: 'purple', disabled: true },
+          { label: 'SmartLink e-Payment', icon: Receipt, tone: 'purple', disabled: true },
+        ],
+      })
     }
     if (byKey.penjualan) {
       result.push({ key: 'penjualan', label: 'Penjualan', icon: ShoppingCart, children: byKey.penjualan.children ?? [] })
@@ -345,7 +360,7 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
             </div>
 
             <div className="overflow-y-auto px-4 pb-4">
-              <div className={activePanel.key === 'buku-besar' ? "grid grid-cols-2 gap-2 sm:grid-cols-3" : "grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"}>
+              <div className={activePanel.key === 'buku-besar' || activePanel.key === 'kas' ? "grid grid-cols-2 gap-2 sm:grid-cols-3" : "grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"}>
                 {activePanel.children.map((child, index) => {
                   const TileIcon = getTileIcon(child.label, index, child.icon)
                   const active = !!child.href && (path === child.href || path.startsWith(child.href + '/'))
