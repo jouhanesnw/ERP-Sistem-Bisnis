@@ -36,7 +36,7 @@ import {
   ChevronRight,
   type LucideIcon,
 } from 'lucide-react'
-import type { ModuleDef, NavChild } from '@/config/modules'
+import type { ModuleDef } from '@/config/modules'
 
 type TileTone = 'blue' | 'green' | 'purple' | 'orange'
 type MenuTile = { label: string; href?: string; icon?: LucideIcon; tone?: TileTone; disabled?: boolean }
@@ -259,12 +259,19 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
       ],
     })
 
-    const reports: NavChild[] = [
-      ...(byKey.kas?.children?.filter((child) => child.href === '/kas/laporan') ?? []),
-      ...(byKey.akuntansi?.children?.filter((child) => child.href === '/akuntansi/laporan') ?? []),
-    ]
-    if (reports.length) {
-      result.push({ key: 'laporan', label: 'Daftar Laporan', icon: ClipboardList, children: reports })
+    if (byKey.kas || byKey.akuntansi) {
+      result.push({
+        key: 'laporan',
+        label: 'Daftar Laporan',
+        icon: ClipboardList,
+        children: [
+          { label: 'Daftar Laporan', href: byKey.akuntansi ? '/akuntansi/laporan' : '/kas/laporan', icon: FileSearch, tone: 'purple' },
+          { label: 'SPT PPN / PPNBM', icon: FileText, tone: 'purple', disabled: true },
+          { label: 'Analisa AI', icon: Activity, tone: 'purple', disabled: true },
+          { label: 'SPT PPh Ps.21', icon: FileText, tone: 'purple', disabled: true },
+          { label: 'Bukti Potong PPh Ps.21', icon: FileSearch, tone: 'purple', disabled: true },
+        ],
+      })
     }
     if (byKey.pengaturan) {
       result.push({
@@ -413,7 +420,7 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
             onClick={() => setPanel(null)}
           />
           <section
-            className={`fixed left-20 top-[5rem] z-50 flex max-h-[calc(100vh-6rem)] w-[calc(100vw-6rem)] ${activePanel.key === 'persediaan' ? 'max-w-[1200px]' : activePanel.key === 'aset-tetap' ? 'max-w-[640px]' : 'max-w-[860px]'} flex-col overflow-hidden rounded-xl border border-[#e6e6e6] bg-[#fbfbfb] text-[#3d3d3d] shadow-[0_12px_35px_rgba(0,0,0,0.28)]`}
+            className={`fixed left-20 top-[5rem] z-50 flex max-h-[calc(100vh-6rem)] w-[calc(100vw-6rem)] ${activePanel.key === 'persediaan' ? 'max-w-[1200px]' : activePanel.key === 'aset-tetap' || activePanel.key === 'laporan' ? 'max-w-[640px]' : 'max-w-[860px]'} flex-col overflow-hidden rounded-xl border border-[#e6e6e6] bg-[#fbfbfb] text-[#3d3d3d] shadow-[0_12px_35px_rgba(0,0,0,0.28)]`}
             aria-label={activePanel.label}
             aria-modal="false"
             role="dialog"
@@ -434,7 +441,7 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
             </div>
 
             <div className="overflow-y-auto px-4 pb-4">
-              <div className={activePanel.key === 'buku-besar' || activePanel.key === 'kas' || activePanel.key === 'aset-tetap' ? "grid grid-cols-2 gap-2 sm:grid-cols-3" : activePanel.key === 'persediaan' ? "grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6" : "grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"}>
+              <div className={activePanel.key === 'buku-besar' || activePanel.key === 'kas' || activePanel.key === 'aset-tetap' || activePanel.key === 'laporan' ? "grid grid-cols-2 gap-2 sm:grid-cols-3" : activePanel.key === 'persediaan' ? "grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6" : "grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"}>
                 {activePanel.children.map((child, index) => {
                   const TileIcon = getTileIcon(child.label, index, child.icon)
                   const active = !!child.href && (path === child.href || path.startsWith(child.href + '/'))
