@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useMemo, useState, type MouseEvent } from 'react'
+import { useEffect, useMemo, useState, type MouseEvent, type SyntheticEvent } from 'react'
 import {
   Building2, BookOpen, Wallet, ShoppingCart, Package, Boxes, Landmark,
   ClipboardList, Settings, Database, Power, ChevronRight, Loader2,
@@ -87,7 +87,7 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [flyout])
 
-  function showTooltip(event: MouseEvent<HTMLElement>, label: string) {
+  function showTooltip(event: SyntheticEvent<HTMLElement>, label: string) {
     const rect = event.currentTarget.getBoundingClientRect()
     setTooltip({ label, top: rect.top + rect.height / 2 })
   }
