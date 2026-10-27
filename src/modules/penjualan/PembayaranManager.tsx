@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { isoDate, monthStart, rupiah, tglID } from '@/lib/format'
+import { formatCurrency } from '@/modules/pengaturan/currencies'
 import type { Pelanggan, Pembayaran, PjPerm, RekeningPilihan } from './types'
 
 export default function PembayaranManager({ companyId, pelanggan, rekening, perm }: {
@@ -42,7 +43,7 @@ export default function PembayaranManager({ companyId, pelanggan, rekening, perm
       <div className="card flex flex-wrap items-end gap-3 p-4">
         <label className="text-sm">Dari<input type="date" className="input mt-1" value={from} onChange={(e) => setFrom(e.target.value)} /></label>
         <label className="text-sm">Sampai<input type="date" className="input mt-1" value={to} onChange={(e) => setTo(e.target.value)} /></label>
-        <p className="ml-auto text-sm text-ink/60">{rows.length} pembayaran · Total <b className="text-ink">{rupiah(rows.reduce((s, r) => s + Number(r.jumlah), 0))}</b></p>
+        <p className="ml-auto text-sm text-ink/60">{rows.length} pembayaran · Total <b className="text-ink">{Object.entries(rows.reduce<Record<string, number>>((acc, row) => { const code = row.currency_code || 'IDR'; acc[code] = (acc[code] ?? 0) + Number(row.jumlah); return acc }, {})).map(([code, amount]) => formatCurrency(amount, code)).join(' · ') || formatCurrency(0, 'IDR')}</b></p>
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="card overflow-x-auto">
@@ -58,7 +59,7 @@ export default function PembayaranManager({ companyId, pelanggan, rekening, perm
                 <td className="p-3">{r.pj_dokumen?.nomor}{r.catatan && <span className="block text-xs text-ink/50">{r.catatan}</span>}</td>
                 <td className="p-3">{r.pj_dokumen ? namaPel[r.pj_dokumen.pelanggan_id] : '—'}</td>
                 <td className="p-3">{namaRek[r.rekening_id] ?? '—'}</td>
-                <td className="p-3 text-right tabular-nums">{rupiah(Number(r.jumlah))}</td>
+                <td className="p-3 text-right tabular-nums">{formatCurrency(Number(r.jumlah), r.currency_code || 'IDR')}</td>
                 <td className="p-3 text-right">{perm.delete && <button className="btn px-2" onClick={() => remove(r)} aria-label="Hapus"><Trash2 size={15} /></button>}</td>
               </tr>
             ))}
