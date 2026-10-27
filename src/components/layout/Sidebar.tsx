@@ -219,7 +219,29 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
       })
     }
     if (byKey.produk) {
-      result.push({ key: 'persediaan', label: 'Persediaan', icon: Boxes, children: byKey.produk.children ?? [] })
+      result.push({
+        key: 'persediaan',
+        label: 'Persediaan',
+        icon: Boxes,
+        children: [
+          { label: 'Permintaan Barang', icon: FileText, tone: 'green', disabled: true },
+          { label: 'Pemindahan Barang', href: '/produk/transfer', icon: Truck, tone: 'green' },
+          { label: 'Penyesuaian Persediaan', href: '/produk/penyesuaian', icon: Boxes, tone: 'green' },
+          { label: 'Pekerjaan Pesanan', icon: ClipboardCheck, tone: 'green', disabled: true },
+          { label: 'Penambahan Bahan Baku', icon: Package, tone: 'green', disabled: true },
+          { label: 'Penyelesaian Pesanan', icon: ClipboardCheck, tone: 'green', disabled: true },
+          { label: 'Perintah Stok Opname', icon: FileText, tone: 'green', disabled: true },
+          { label: 'Hasil Stok Opname', href: '/produk/stok', icon: ClipboardCheck, tone: 'green' },
+          { label: 'Barang & Jasa', href: '/produk/daftar', icon: Package, tone: 'blue' },
+          { label: 'Gudang', href: '/produk/gudang', icon: Building2, tone: 'blue' },
+          { label: 'Satuan Barang', icon: Boxes, tone: 'blue', disabled: true },
+          { label: 'Kategori Barang', icon: Tags, tone: 'blue', disabled: true },
+          { label: 'Merek Barang', icon: BadgeDollarSign, tone: 'blue', disabled: true },
+          { label: 'Pemenuhan Pesanan', icon: ClipboardList, tone: 'purple', disabled: true },
+          { label: 'Barang per Gudang', href: '/produk/stok', icon: Building2, tone: 'purple' },
+          { label: 'Barang Stok Minimum', icon: Package, tone: 'purple', disabled: true },
+        ],
+      })
     }
     result.push({ key: 'aset-tetap', label: 'Aset Tetap', icon: Landmark, disabled: true })
 
@@ -377,7 +399,7 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
             onClick={() => setPanel(null)}
           />
           <section
-            className="fixed left-20 top-[5rem] z-50 flex max-h-[calc(100vh-6rem)] w-[calc(100vw-6rem)] max-w-[860px] flex-col overflow-hidden rounded-xl border border-[#e6e6e6] bg-[#fbfbfb] text-[#3d3d3d] shadow-[0_12px_35px_rgba(0,0,0,0.28)]"
+            className={`fixed left-20 top-[5rem] z-50 flex max-h-[calc(100vh-6rem)] w-[calc(100vw-6rem)] ${activePanel.key === 'persediaan' ? 'max-w-[1200px]' : 'max-w-[860px]'} flex-col overflow-hidden rounded-xl border border-[#e6e6e6] bg-[#fbfbfb] text-[#3d3d3d] shadow-[0_12px_35px_rgba(0,0,0,0.28)]`}
             aria-label={activePanel.label}
             aria-modal="false"
             role="dialog"
@@ -398,7 +420,7 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
             </div>
 
             <div className="overflow-y-auto px-4 pb-4">
-              <div className={activePanel.key === 'buku-besar' || activePanel.key === 'kas' ? "grid grid-cols-2 gap-2 sm:grid-cols-3" : "grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"}>
+              <div className={activePanel.key === 'buku-besar' || activePanel.key === 'kas' ? "grid grid-cols-2 gap-2 sm:grid-cols-3" : activePanel.key === 'persediaan' ? "grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6" : "grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"}>
                 {activePanel.children.map((child, index) => {
                   const TileIcon = getTileIcon(child.label, index, child.icon)
                   const active = !!child.href && (path === child.href || path.startsWith(child.href + '/'))
