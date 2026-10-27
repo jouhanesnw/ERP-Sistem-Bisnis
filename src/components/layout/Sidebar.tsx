@@ -320,12 +320,12 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
                       prefetch
                       onClick={closeMenus}
                       aria-current={active ? 'page' : undefined}
-                      className={`group relative flex min-h-[108px] flex-col items-center justify-between gap-2 rounded-lg border p-3 text-center shadow-sm transition duration-150 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1685d1] sm:min-h-[118px] ${getTileTone(child.label)} ${active ? 'ring-2 ring-inset ring-[#1685d1]' : ''}`}
+                      className={`group relative flex min-h-[92px] flex-col items-center justify-between gap-1.5 rounded-lg border p-2.5 text-center shadow-sm transition duration-150 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1685d1] sm:min-h-[100px] ${getTileTone(child.label)} ${active ? 'ring-2 ring-inset ring-[#1685d1]' : ''}`}
                     >
                       <span className="flex flex-1 items-center justify-center">
-                        <TileIcon size={32} strokeWidth={1.8} className="transition-transform group-hover:scale-105" />
+                        <TileIcon size={28} strokeWidth={1.8} className="transition-transform group-hover:scale-105" />
                       </span>
-                      <span className="text-sm font-medium leading-snug text-[#414b56]">{child.label}</span>
+                      <span className="text-[13px] font-medium leading-snug text-[#414b56]">{child.label}</span>
                       {pending ? <Loader2 size={13} className="absolute right-1.5 top-1.5 animate-spin" /> : null}
                     </Link>
                   )
