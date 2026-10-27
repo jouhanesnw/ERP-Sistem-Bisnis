@@ -126,7 +126,7 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
         label: 'Perusahaan',
         icon: Building2,
         children: [
-          { label: 'Mata Uang', icon: CreditCard, tone: 'blue', disabled: true },
+          { label: 'Mata Uang', href: '/pengaturan/mata-uang', icon: CreditCard, tone: 'blue' },
           { label: 'Cabang', icon: Building2, tone: 'blue', disabled: true },
           { label: 'Departemen', icon: Landmark, tone: 'blue', disabled: true },
           { label: 'Pajak', icon: Receipt, tone: 'blue', disabled: true },
