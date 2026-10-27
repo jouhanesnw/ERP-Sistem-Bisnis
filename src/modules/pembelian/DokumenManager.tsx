@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2 } from 'lucide-react'
 import { supabaseBrowser } from '@/lib/supabase/client'
-import { addDays, isoDate, rupiah, tglID } from '@/lib/format'
+import { addDays, isoDate, tglID } from '@/lib/format'
 import { formatCurrency, type ActiveCurrency } from '@/modules/pengaturan/currencies'
 import type { Dokumen, Item, Jenis, Pemasok, PbPerm, RekeningPilihan } from './types'
 
@@ -62,7 +62,8 @@ export default function DokumenManager({ companyId, jenis, pemasok, rekening, pe
     if (filter === 'lunas') return d.status === 'terbit' && d.sisa <= 0
     return d.status === filter
   })
-  const utang = rows.filter((d) => d.jenis === 'faktur' && d.status === 'terbit').reduce((s, d) => s + Number(d.sisa), 0)
+  const utangByCurrency = rows.filter((d) => d.jenis === 'faktur' && d.status === 'terbit').reduce<Record<string, number>>((acc, d) => { const code = d.currency_code || 'IDR'; acc[code] = (acc[code] ?? 0) + Number(d.sisa); return acc }, {})
+  const utang = Object.entries(utangByCurrency).map(([code, amount]) => formatCurrency(amount, code)).join(' · ') || formatCurrency(0, 'IDR')
   const pemasokAktif = pemasok.filter((p) => p.aktif)
 
   async function openForm(d: Dokumen | null) {
@@ -97,7 +98,7 @@ export default function DokumenManager({ companyId, jenis, pemasok, rekening, pe
       <div className="flex flex-wrap items-center gap-3">
         <div>
           <h1 className="text-2xl font-semibold">{isFaktur ? 'Faktur Pembelian' : 'Pesanan Pembelian'}</h1>
-          {isFaktur && <p className="text-sm text-ink/60">Utang belum dibayar: <b className="text-ink">{rupiah(utang)}</b></p>}
+          {isFaktur && <p className="text-sm text-ink/60">Utang belum dibayar: <b className="text-ink">{utang}</b></p>}
         </div>
         {perm.create && (pemasokAktif.length
           ? <button className="btn btn-primary ml-auto" onClick={() => openForm(null)}><Plus size={16} />Buat {isFaktur ? 'faktur' : 'pesanan'}</button>
