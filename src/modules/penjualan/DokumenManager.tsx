@@ -205,7 +205,7 @@ function BayarForm({ sb, companyId, dokumen, onDone, onCancel }: {
       if (!current) return
       setLoadingRekening(false)
       if (error) return setError(error.message)
-      const list = ((data ?? []) as RekeningPilihan[]).filter((item) => item.aktif)
+      const list = ((data ?? []) as RekeningPilihan[]).filter((item) => item.aktif && item.currency_code === (dokumen.currency_code || 'IDR'))
       setRekening(list)
       setRek((old) => old || list[0]?.id || '')
     })
@@ -224,7 +224,7 @@ function BayarForm({ sb, companyId, dokumen, onDone, onCancel }: {
     <label className="text-sm">Jumlah ({dokumen.currency_code || 'IDR'})<input type="number" min="1" max={dokumen.sisa} step="1" className="input mt-1" value={jumlah} onChange={(e) => setJumlah(e.target.value)} required /></label>
     <label className="text-sm">Masuk ke rekening<select className="input mt-1" value={rek} onChange={(e) => setRek(e.target.value)} required disabled={loadingRekening || !rekening.length}><option value="">{loadingRekening ? 'Memuat rekening…' : 'Pilih rekening'}</option>{rekening.map((r) => <option key={r.id} value={r.id}>{r.nama}</option>)}</select></label>
     <label className="text-sm">Catatan<input className="input mt-1" value={catatan} onChange={(e) => setCatatan(e.target.value)} /></label>
-    {!loadingRekening && !rekening.length && !error && <p className="text-sm text-red-600 sm:col-span-2">Belum ada rekening aktif. Buat dulu di Kas &gt; Rekening Kas.</p>}
+    {!loadingRekening && !rekening.length && !error && <p className="text-sm text-red-600 sm:col-span-2">Belum ada rekening aktif dengan mata uang {dokumen.currency_code || 'IDR'}. Buat rekening dengan mata uang yang sama di Kas &gt; Rekening Kas.</p>}
     {error && <p className="text-sm text-red-600 sm:col-span-2">{error}</p>}
     <div className="flex gap-2 sm:col-span-2"><button className="btn btn-primary" disabled={busy || !rek}>{busy ? 'Menyimpan…' : 'Catat pembayaran'}</button><button type="button" className="btn" onClick={onCancel}>Batal</button></div>
   </form>
