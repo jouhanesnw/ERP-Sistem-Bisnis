@@ -24,25 +24,34 @@ export async function middleware(req: NextRequest) {
     },
   })
 
-  // Verify/refresh the session once in middleware. Forward only this verified identity
-  // to the server-rendered layout to avoid repeating the same Auth network request.
-  const { data: { user } } = await supabase.auth.getUser()
+  // Verify the access token via its signed claims. With asymmetric Supabase signing
+  // keys this can be checked locally (using cached JWKS), avoiding an Auth network
+  // request on every page navigation/prefetch. getClaims also refreshes near-expiry
+  // sessions and falls back to Auth verification when local verification is unavailable.
+  const { data } = await supabase.auth.getClaims()
+  const claims = data?.claims as Record<string, unknown> | null | undefined
+  const userId = typeof claims?.sub === 'string' ? claims.sub : null
+  const userEmail = typeof claims?.email === 'string' ? claims.email : ''
+  const metadata = claims?.user_metadata && typeof claims.user_metadata === 'object'
+    ? claims.user_metadata as Record<string, unknown>
+    : {}
+  const metadataName = String(metadata.full_name ?? metadata.name ?? '')
   const onLogin = req.nextUrl.pathname.startsWith('/login')
 
-  if (!user && !onLogin) {
+  if (!userId && !onLogin) {
     return attachRefreshedCookies(NextResponse.redirect(new URL('/login', req.url)), refreshedCookies)
   }
-  if (user && onLogin) {
+  if (userId && onLogin) {
     return attachRefreshedCookies(NextResponse.redirect(new URL('/dashboard', req.url)), refreshedCookies)
   }
 
   const requestHeaders = new Headers(req.headers)
   // Remove any client-supplied identity headers before adding verified values.
   IDENTITY_HEADERS.forEach((name) => requestHeaders.delete(name))
-  if (user) {
-    requestHeaders.set('x-erp-auth-user-id', user.id)
-    requestHeaders.set('x-erp-auth-user-email', user.email ?? '')
-    requestHeaders.set('x-erp-auth-user-name', String(user.user_metadata?.full_name ?? user.user_metadata?.name ?? ''))
+  if (userId) {
+    requestHeaders.set('x-erp-auth-user-id', userId)
+    requestHeaders.set('x-erp-auth-user-email', userEmail)
+    requestHeaders.set('x-erp-auth-user-name', metadataName)
   }
 
   const response = NextResponse.next({ request: { headers: requestHeaders } })
