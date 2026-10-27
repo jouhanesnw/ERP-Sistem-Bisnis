@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { supabaseBrowser } from '@/lib/supabase/client'
-import { isoDate, monthStart, rupiah, tglID } from '@/lib/format'
+import { isoDate, monthStart, tglID } from '@/lib/format'
 import { formatCurrency } from '@/modules/pengaturan/currencies'
 import type { Pemasok, Pembayaran, PbPerm, RekeningPilihan } from './types'
 
