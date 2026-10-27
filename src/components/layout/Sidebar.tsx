@@ -101,6 +101,10 @@ function getTileTone(label: string, customTone?: TileTone) {
   return 'border-[#46a9fb] bg-[#d7eaff] text-[#075985]'
 }
 
+function getTileClass(child: MenuTile, active: boolean) {
+  return `group relative flex min-h-[92px] flex-col items-center justify-between gap-1.5 rounded-lg border p-2.5 text-center shadow-sm transition duration-150 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1685d1] sm:min-h-[100px] ${getTileTone(child.label, child.tone)} ${active ? 'ring-2 ring-inset ring-[#1685d1]' : ''}`
+}
+
 export default function Sidebar({ modules, companyName, open, onClose, onLogout, pendingPath }: {
   modules: ModuleDef[]
   companyName: string
@@ -462,7 +466,7 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
                   const TileIcon = getTileIcon(child.label, index, child.icon)
                   const active = !!child.href && (path === child.href || path.startsWith(child.href + '/'))
                   const pending = !!child.href && pendingPath === child.href
-                  const tileClass = `group relative flex min-h-[92px] flex-col items-center justify-between gap-1.5 rounded-lg border p-2.5 text-center shadow-sm transition duration-150 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1685d1] sm:min-h-[100px] ${getTileTone(child.label, child.tone)} ${active ? 'ring-2 ring-inset ring-[#1685d1]' : ''}`
+                  const tileClass = getTileClass(child, active)
                   const icon = <span className="flex flex-1 items-center justify-center">
                     <TileIcon size={28} strokeWidth={1.8} className={`transition-transform ${child.disabled ? '' : 'group-hover:scale-105'}`} />
                   </span>
