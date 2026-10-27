@@ -1,9 +1,12 @@
 import Denied from '@/components/Denied'
-import { getPjContext, loadPelanggan } from '@/modules/penjualan/data'
+import { getPjContext, loadPelanggan, loadPjDocuments } from '@/modules/penjualan/data'
 import DokumenManager from '@/modules/penjualan/DokumenManager'
 export default async function Page() {
   const k = await getPjContext()
   if (!k) return <Denied module="Penjualan" />
-  const pelanggan = await loadPelanggan(k.companyId)
-  return <DokumenManager companyId={k.companyId} jenis="faktur" pelanggan={pelanggan} perm={k.perm} />
+  const [pelanggan, initialDocs] = await Promise.all([
+    loadPelanggan(k.companyId),
+    loadPjDocuments(k.companyId, 'faktur'),
+  ])
+  return <DokumenManager companyId={k.companyId} jenis="faktur" pelanggan={pelanggan} initialRows={initialDocs.rows} initialError={initialDocs.error} perm={k.perm} />
 }

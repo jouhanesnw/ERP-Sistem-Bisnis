@@ -1,7 +1,7 @@
 import { getAppContext } from '@/lib/context'
 import { can } from '@/lib/permissions'
 import { supabaseServer } from '@/lib/supabase/server'
-import type { Pelanggan, PjPerm, RekeningPilihan } from './types'
+import type { Dokumen, Jenis, Pelanggan, PjPerm, RekeningPilihan } from './types'
 
 export async function getPjContext(): Promise<{ companyId: string; perm: PjPerm } | null> {
   const ctx = await getAppContext()
@@ -16,6 +16,14 @@ export async function loadPelanggan(companyId: string) {
   const sb = supabaseServer()
   const { data } = await sb.from('pj_pelanggan').select('*').eq('company_id', companyId).order('nama')
   return (data ?? []) as Pelanggan[]
+}
+
+export async function loadPjDocuments(companyId: string, jenis: Jenis) {
+  const sb = supabaseServer()
+  const { data, error } = await sb.from('pj_dokumen_v').select('*')
+    .eq('company_id', companyId).eq('jenis', jenis)
+    .order('tanggal', { ascending: false }).order('nomor', { ascending: false }).limit(500)
+  return { rows: (data ?? []) as Dokumen[], error: error?.message ?? null }
 }
 
 export async function loadPjBase(companyId: string) {

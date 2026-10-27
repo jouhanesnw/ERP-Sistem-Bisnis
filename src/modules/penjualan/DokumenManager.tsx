@@ -1,5 +1,5 @@
 'use client'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2 } from 'lucide-react'
@@ -13,15 +13,16 @@ type ProdukPilihan = { id: string; kode: string | null; nama: string; satuan: st
 type GudangPilihan = { id: string; kode: string; nama: string; is_default: boolean }
 const fmtN = (n: number) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(n)
 
-export default function DokumenManager({ companyId, jenis, pelanggan, perm }: {
-  companyId: string; jenis: Jenis; pelanggan: Pelanggan[]; perm: PjPerm
+export default function DokumenManager({ companyId, jenis, pelanggan, initialRows, initialError, perm }: {
+  companyId: string; jenis: Jenis; pelanggan: Pelanggan[]; initialRows: Dokumen[]; initialError: string | null; perm: PjPerm
 }) {
   const sb = useMemo(() => supabaseBrowser(), [])
   const router = useRouter()
   const isFaktur = jenis === 'faktur'
-  const [rows, setRows] = useState<Dokumen[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [rows, setRows] = useState<Dokumen[]>(initialRows)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(initialError)
+  const firstLoad = useRef(true)
   const [filter, setFilter] = useState('semua')
   const [form, setForm] = useState<{ doc: Dokumen | null; items: Item[] } | null>(null)
   const [bayar, setBayar] = useState<Dokumen | null>(null)
@@ -39,7 +40,15 @@ export default function DokumenManager({ companyId, jenis, pelanggan, perm }: {
     if (error) return setError(error.message)
     setError(null); setRows((data ?? []) as Dokumen[])
   }, [sb, companyId, jenis, from, to])
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    // The initial document list is rendered by the server. Fetch again only when
+    // the user changes the date range, or after an explicit mutation calls load().
+    if (firstLoad.current) {
+      firstLoad.current = false
+      return
+    }
+    load()
+  }, [load])
 
   const visible = rows.filter((d) => filter === 'semua' || (filter === 'belum' ? d.status === 'terbit' && d.sisa > 0 : filter === 'lunas' ? d.status === 'terbit' && d.sisa <= 0 : d.status === filter))
   const piutang = rows.filter((d) => d.status === 'terbit').reduce((s, d) => s + Number(d.sisa), 0)
