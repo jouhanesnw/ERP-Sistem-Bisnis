@@ -261,3 +261,121 @@ grant execute on function public.pj_simpan_dokumen(jsonb), public.pj_penawaran_k
   public.pj_catat_pembayaran(uuid, date, numeric, uuid, text),
   public.pb_simpan_dokumen(jsonb), public.pb_pesanan_ke_faktur(uuid),
   public.pb_catat_pembayaran(uuid, date, numeric, uuid, text) to authenticated;
+
+
+-- Mata uang mengikuti rekening. Ini mencegah saldo rekening mencampur nilai IDR, USD, dll.
+alter table public.kas_rekening add column currency_code text not null default 'IDR';
+alter table public.kas_rekening add constraint kas_rekening_company_currency_fk
+  foreign key (company_id, currency_code) references public.company_currencies(company_id, code);
+
+-- Saldo rekening hanya menjumlahkan transaksi yang memakai mata uang rekening tersebut.
+create or replace view public.kas_saldo with (security_invoker = true) as
+select r.id, r.company_id, r.nama, r.tipe, r.nomor, r.saldo_awal, r.aktif,
+  r.saldo_awal
+  + coalesce((select sum(jumlah) from public.kas_transaksi t where t.rekening_id = r.id and t.jenis = 'masuk' and t.currency_code = r.currency_code), 0)
+  - coalesce((select sum(jumlah) from public.kas_transaksi t where t.rekening_id = r.id and t.jenis in ('keluar','transfer') and t.currency_code = r.currency_code), 0)
+  + coalesce((select sum(jumlah) from public.kas_transaksi t where t.rekening_tujuan_id = r.id and t.jenis = 'transfer' and t.currency_code = r.currency_code), 0)
+  as saldo,
+  r.currency_code
+from public.kas_rekening r;
+
+-- Transaksi Kas harus menggunakan mata uang rekening asal dan tujuan.
+create or replace function public.check_cash_transaction_currency() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  origin_currency text;
+  destination_currency text;
+begin
+  select currency_code into origin_currency from public.kas_rekening
+    where id = new.rekening_id and company_id = new.company_id and aktif;
+  if origin_currency is null then raise exception 'Rekening asal tidak aktif atau tidak ditemukan'; end if;
+  if new.currency_code <> origin_currency then
+    raise exception 'Mata uang transaksi harus sama dengan mata uang rekening asal (%)', origin_currency;
+  end if;
+  if new.jenis = 'transfer' then
+    select currency_code into destination_currency from public.kas_rekening
+      where id = new.rekening_tujuan_id and company_id = new.company_id and aktif;
+    if destination_currency is null then raise exception 'Rekening tujuan tidak aktif atau tidak ditemukan'; end if;
+    if destination_currency <> origin_currency then
+      raise exception 'Transfer antar rekening hanya bisa dilakukan jika mata uangnya sama';
+    end if;
+  end if;
+  return new;
+end $$;
+create trigger kas_transaksi_currency_match before insert or update on public.kas_transaksi
+for each row execute function public.check_cash_transaction_currency();
+
+-- Daftar rekening yang dapat digunakan untuk pembayaran kini menyertakan mata uang.
+drop function public.pj_rekening_pilihan(uuid);
+create function public.pj_rekening_pilihan(cid uuid)
+returns table (id uuid, nama text, aktif boolean, currency_code text)
+language sql stable security definer set search_path = public as $$
+  select r.id, r.nama, r.aktif, r.currency_code from public.kas_rekening r
+  where r.company_id = cid and public.has_perm(cid, 'penjualan', 'view') order by r.nama
+$$;
+grant execute on function public.pj_rekening_pilihan(uuid) to authenticated;
+
+drop function public.pb_rekening_pilihan(uuid);
+create function public.pb_rekening_pilihan(cid uuid)
+returns table (id uuid, nama text, aktif boolean, currency_code text)
+language sql stable security definer set search_path = public as $$
+  select r.id, r.nama, r.aktif, r.currency_code from public.kas_rekening r
+  where r.company_id = cid and public.has_perm(cid, 'pembelian', 'view') order by r.nama
+$$;
+grant execute on function public.pb_rekening_pilihan(uuid) to authenticated;
+
+-- Pembayaran memakai rekening yang mata uangnya sama dengan faktur.
+create or replace function public.pj_catat_pembayaran(p_dokumen uuid, p_tanggal date, p_jumlah numeric, p_rekening uuid, p_catatan text default null)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare d public.pj_dokumen%rowtype; tot numeric; sudah numeric; kat uuid; ktid uuid; pid uuid; pel text;
+begin
+  select * into d from public.pj_dokumen where id = p_dokumen and jenis = 'faktur' for update;
+  if not found then raise exception 'Faktur tidak ditemukan'; end if;
+  if not public.has_perm(d.company_id, 'penjualan', 'create') then raise exception 'Tidak punya izin'; end if;
+  if d.status <> 'terbit' then raise exception 'Hanya faktur berstatus terbit yang bisa dibayar'; end if;
+  if p_jumlah is null or p_jumlah <= 0 then raise exception 'Jumlah harus lebih dari 0'; end if;
+  select round(coalesce(sum(qty * harga), 0) * (1 + d.ppn_persen / 100)) into tot from public.pj_dokumen_item where dokumen_id = d.id;
+  select coalesce(sum(jumlah), 0) into sudah from public.pj_pembayaran where dokumen_id = d.id;
+  if p_jumlah > tot - sudah then raise exception 'Jumlah melebihi sisa tagihan (% %)', d.currency_code, tot - sudah; end if;
+  if not exists (select 1 from public.kas_rekening where id = p_rekening and company_id = d.company_id and aktif and currency_code = d.currency_code) then
+    raise exception 'Pilih rekening aktif dengan mata uang yang sama seperti faktur (%)', d.currency_code;
+  end if;
+  select id into kat from public.kas_kategori where company_id = d.company_id and jenis = 'masuk' and nama = 'Penjualan' limit 1;
+  if kat is null then insert into public.kas_kategori (company_id, nama, jenis) values (d.company_id, 'Penjualan', 'masuk') returning id into kat; end if;
+  select nama into pel from public.pj_pelanggan where id = d.pelanggan_id;
+  insert into public.kas_transaksi (company_id, tanggal, jenis, rekening_id, kategori_id, jumlah, keterangan, currency_code)
+  values (d.company_id, p_tanggal, 'masuk', p_rekening, kat, p_jumlah, 'Pembayaran ' || d.nomor || ' - ' || coalesce(pel, ''), d.currency_code)
+  returning id into ktid;
+  insert into public.pj_pembayaran (company_id, dokumen_id, tanggal, jumlah, rekening_id, kas_transaksi_id, catatan, currency_code)
+  values (d.company_id, d.id, p_tanggal, p_jumlah, p_rekening, ktid, p_catatan, d.currency_code) returning id into pid;
+  return pid;
+end $$;
+
+create or replace function public.pb_catat_pembayaran(p_dokumen uuid, p_tanggal date, p_jumlah numeric, p_rekening uuid, p_catatan text default null)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare d public.pb_dokumen%rowtype; tot numeric; sudah numeric; kat uuid; ktid uuid; pid uuid; pemasok_nama text;
+begin
+  select * into d from public.pb_dokumen where id = p_dokumen and jenis = 'faktur' for update;
+  if not found then raise exception 'Faktur tidak ditemukan'; end if;
+  if not public.has_perm(d.company_id, 'pembelian', 'create') then raise exception 'Tidak punya izin'; end if;
+  if d.status <> 'terbit' then raise exception 'Hanya faktur berstatus terbit yang bisa dibayar'; end if;
+  if p_jumlah is null or p_jumlah <= 0 then raise exception 'Jumlah harus lebih dari 0'; end if;
+  select round(coalesce(sum(qty * harga), 0) * (1 + d.ppn_persen / 100)) into tot from public.pb_dokumen_item where dokumen_id = d.id;
+  select coalesce(sum(jumlah), 0) into sudah from public.pb_pembayaran where dokumen_id = d.id;
+  if p_jumlah > tot - sudah then raise exception 'Jumlah melebihi sisa tagihan (% %)', d.currency_code, tot - sudah; end if;
+  if not exists (select 1 from public.kas_rekening where id = p_rekening and company_id = d.company_id and aktif and currency_code = d.currency_code) then
+    raise exception 'Pilih rekening aktif dengan mata uang yang sama seperti faktur (%)', d.currency_code;
+  end if;
+  select id into kat from public.kas_kategori where company_id = d.company_id and jenis = 'keluar' and nama = 'Pembelian' limit 1;
+  if kat is null then insert into public.kas_kategori (company_id, nama, jenis) values (d.company_id, 'Pembelian', 'keluar') returning id into kat; end if;
+  select nama into pemasok_nama from public.pb_pemasok where id = d.pemasok_id;
+  insert into public.kas_transaksi (company_id, tanggal, jenis, rekening_id, kategori_id, jumlah, keterangan, currency_code)
+  values (d.company_id, p_tanggal, 'keluar', p_rekening, kat, p_jumlah, 'Pembayaran ' || d.nomor || ' - ' || coalesce(pemasok_nama, ''), d.currency_code)
+  returning id into ktid;
+  insert into public.pb_pembayaran (company_id, dokumen_id, tanggal, jumlah, rekening_id, kas_transaksi_id, catatan, currency_code)
+  values (d.company_id, d.id, p_tanggal, p_jumlah, ktid, p_rekening, p_catatan, d.currency_code) returning id into pid;
+  return pid;
+end $$;
+
+grant execute on function public.pj_catat_pembayaran(uuid, date, numeric, uuid, text),
+  public.pb_catat_pembayaran(uuid, date, numeric, uuid, text) to authenticated;
