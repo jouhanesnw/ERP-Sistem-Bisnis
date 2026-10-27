@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Plus, Trash2 } from 'lucide-react'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { addDays, isoDate, rupiah, tglID } from '@/lib/format'
+import { formatCurrency, type ActiveCurrency } from '@/modules/pengaturan/currencies'
 import type { Dokumen, Item, Jenis, Pelanggan, PjPerm, RekeningPilihan } from './types'
 
 
@@ -13,8 +14,8 @@ type ProdukPilihan = { id: string; kode: string | null; nama: string; satuan: st
 type GudangPilihan = { id: string; kode: string; nama: string; is_default: boolean }
 const fmtN = (n: number) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(n)
 
-export default function DokumenManager({ companyId, jenis, pelanggan, initialRows, initialError, perm }: {
-  companyId: string; jenis: Jenis; pelanggan: Pelanggan[]; initialRows: Dokumen[]; initialError: string | null; perm: PjPerm
+export default function DokumenManager({ companyId, jenis, pelanggan, initialRows, initialError, perm, currencies }: {
+  companyId: string; jenis: Jenis; pelanggan: Pelanggan[]; initialRows: Dokumen[]; initialError: string | null; perm: PjPerm; currencies: ActiveCurrency[]
 }) {
   const sb = useMemo(() => supabaseBrowser(), [])
   const router = useRouter()
@@ -95,13 +96,13 @@ export default function DokumenManager({ companyId, jenis, pelanggan, initialRow
       <p className="ml-auto text-sm text-ink/60">{visible.length} dokumen</p>
     </div>
     {error && <p className="text-sm text-red-600">{error}</p>}
-    {form && <DokumenForm key={form.doc?.id ?? 'new'} sb={sb} companyId={companyId} jenis={jenis} pelanggan={customerList.concat(pelanggan.filter((p) => !p.aktif && p.id === form.doc?.pelanggan_id))} doc={form.doc} items={form.items} onDone={() => { setForm(null); load() }} onCancel={() => setForm(null)} />}
+    {form && <DokumenForm key={form.doc?.id ?? 'new'} sb={sb} companyId={companyId} jenis={jenis} currencies={currencies} pelanggan={customerList.concat(pelanggan.filter((p) => !p.aktif && p.id === form.doc?.pelanggan_id))} doc={form.doc} items={form.items} onDone={() => { setForm(null); load() }} onCancel={() => setForm(null)} />}
     {bayar && <BayarForm key={bayar.id} sb={sb} companyId={companyId} dokumen={bayar} onDone={() => { setBayar(null); load() }} onCancel={() => setBayar(null)} />}
     <div className="card overflow-x-auto"><table className="w-full text-left text-sm">
       <thead><tr className="border-b border-line text-ink/60"><th className="p-3">Nomor</th><th className="p-3">Pelanggan</th><th className="p-3">{isFaktur ? 'Jatuh tempo' : 'Berlaku sampai'}</th><th className="p-3 text-right">Total</th>{isFaktur && <th className="p-3 text-right">Sisa</th>}<th className="p-3">Status</th><th className="p-3" /></tr></thead>
       <tbody>{visible.map((d) => <tr key={d.id} className="border-b border-line align-top last:border-0">
         <td className="whitespace-nowrap p-3">{d.nomor}<span className="block text-xs text-ink/50">{tglID(d.tanggal)}</span></td><td className="p-3">{d.pelanggan_nama}</td><td className="whitespace-nowrap p-3">{d.batas_tanggal ? tglID(d.batas_tanggal) : '—'}</td>
-        <td className="p-3 text-right tabular-nums">{rupiah(Number(d.total))}</td>{isFaktur && <td className="p-3 text-right tabular-nums">{d.status === 'terbit' ? rupiah(Number(d.sisa)) : '—'}</td>}
+        <td className="p-3 text-right tabular-nums">{formatCurrency(Number(d.total), d.currency_code || 'IDR')}</td>{isFaktur && <td className="p-3 text-right tabular-nums">{d.status === 'terbit' ? formatCurrency(Number(d.sisa), d.currency_code || 'IDR') : '—'}</td>}
         <td className="p-3"><span className="rounded bg-canvas px-2 py-1 text-xs">{d.status === 'terbit' && d.sisa <= 0 ? 'Lunas' : d.status}</span></td>
         <td className="p-3"><div className="flex flex-wrap justify-end gap-1.5">
           <button className="btn" onClick={() => window.open(`/cetak/penjualan/${d.id}`, '_blank')}>Cetak</button>
@@ -120,11 +121,12 @@ export default function DokumenManager({ companyId, jenis, pelanggan, initialRow
   </div>
 }
 
-function DokumenForm({ sb, companyId, jenis, pelanggan, doc, items: initialItems, onDone, onCancel }: {
-  sb: ReturnType<typeof supabaseBrowser>; companyId: string; jenis: Jenis; pelanggan: Pelanggan[]; doc: Dokumen | null; items: Item[]; onDone: () => void; onCancel: () => void
+function DokumenForm({ sb, companyId, jenis, pelanggan, currencies, doc, items: initialItems, onDone, onCancel }: {
+  sb: ReturnType<typeof supabaseBrowser>; companyId: string; jenis: Jenis; pelanggan: Pelanggan[]; currencies: ActiveCurrency[]; doc: Dokumen | null; items: Item[]; onDone: () => void; onCancel: () => void
 }) {
   const today = isoDate(new Date())
   const [pel, setPel] = useState(doc?.pelanggan_id ?? pelanggan[0]?.id ?? '')
+  const [currencyCode, setCurrencyCode] = useState(doc?.currency_code ?? currencies.find((c) => c.is_default)?.code ?? currencies[0]?.code ?? 'IDR')
   const [tanggal, setTanggal] = useState(doc?.tanggal ?? today)
   const [batas, setBatas] = useState(doc?.batas_tanggal ?? addDays(today, 14))
   const [ppn, setPpn] = useState(String(doc?.ppn_persen ?? 0))
@@ -146,7 +148,7 @@ function DokumenForm({ sb, companyId, jenis, pelanggan, doc, items: initialItems
   }
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setError(null)
-    const { error } = await sb.rpc('pj_simpan_dokumen', { p: { id: doc?.id ?? null, company_id: companyId, jenis, pelanggan_id: pel, gudang_id: gudangId, tanggal, batas_tanggal: batas || null, ppn_persen: Number(ppn), catatan, items: items.map((i) => ({ deskripsi: i.deskripsi, qty: Number(i.qty), harga: Number(i.harga || 0), produk_id: i.produk_id ?? null })) } })
+    const { error } = await sb.rpc('pj_simpan_dokumen', { p: { id: doc?.id ?? null, company_id: companyId, jenis, pelanggan_id: pel, gudang_id: gudangId, tanggal, batas_tanggal: batas || null, ppn_persen: Number(ppn), catatan, currency_code: currencyCode, items: items.map((i) => ({ deskripsi: i.deskripsi, qty: Number(i.qty), harga: Number(i.harga || 0), produk_id: i.produk_id ?? null })) } })
     setBusy(false)
     if (error) return setError(error.message)
     onDone()
@@ -160,6 +162,7 @@ function DokumenForm({ sb, companyId, jenis, pelanggan, doc, items: initialItems
     </label>
     <div className="grid gap-3 sm:grid-cols-2">
       <label className="text-sm sm:col-span-2">Pelanggan<select className="input mt-1" value={pel} onChange={(e) => setPel(e.target.value)} required>{pelanggan.map((p) => <option key={p.id} value={p.id}>{p.nama}</option>)}</select></label>
+      <label className="text-sm">Mata uang<select className="input mt-1" value={currencyCode} onChange={(e) => setCurrencyCode(e.target.value)} required>{currencies.map((c) => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}</select></label>
       <label className="text-sm">Tanggal<input type="date" className="input mt-1" value={tanggal} onChange={(e) => setTanggal(e.target.value)} required /></label>
       <label className="text-sm">{jenis === 'faktur' ? 'Jatuh tempo' : 'Berlaku sampai'}<input type="date" className="input mt-1" value={batas} onChange={(e) => setBatas(e.target.value)} /></label>
     </div>
@@ -177,7 +180,7 @@ function DokumenForm({ sb, companyId, jenis, pelanggan, doc, items: initialItems
       <button type="button" className="btn" onClick={() => setItems((old) => [...old, { deskripsi: '', qty: 1, harga: 0 }])}><Plus size={15} />Tambah baris</button>
     </div>
     <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm">Catatan<input className="input mt-1" value={catatan} onChange={(e) => setCatatan(e.target.value)} /></label><label className="text-sm">PPN (%)<input className="input mt-1" type="number" min="0" max="100" step="any" value={ppn} onChange={(e) => setPpn(e.target.value)} /></label></div>
-    <p className="text-right text-sm text-ink/60">Subtotal {rupiah(subtotal)} · Total {rupiah(Math.round(subtotal * (1 + Number(ppn || 0) / 100)) )}</p>
+    <p className="text-right text-sm text-ink/60">Subtotal {formatCurrency(subtotal, currencyCode)} · Total {formatCurrency(Math.round(subtotal * (1 + Number(ppn || 0) / 100)), currencyCode)}</p>
     {error && <p className="text-sm text-red-600">{error}</p>}
     <div className="flex gap-2"><button className="btn btn-primary" disabled={busy || !pel || !gudangId}>{busy ? 'Menyimpan…' : 'Simpan'}</button><button type="button" className="btn" onClick={onCancel}>Batal</button></div>
   </form>
@@ -215,9 +218,9 @@ function BayarForm({ sb, companyId, dokumen, onDone, onCancel }: {
     onDone()
   }
   return <form onSubmit={submit} className="card grid gap-3 p-4 sm:grid-cols-2">
-    <h2 className="font-medium sm:col-span-2">Pembayaran {dokumen.nomor} · sisa {rupiah(dokumen.sisa)}</h2>
+    <h2 className="font-medium sm:col-span-2">Pembayaran {dokumen.nomor} · sisa {formatCurrency(dokumen.sisa, dokumen.currency_code || 'IDR')}</h2>
     <label className="text-sm">Tanggal<input type="date" className="input mt-1" value={tanggal} onChange={(e) => setTanggal(e.target.value)} required /></label>
-    <label className="text-sm">Jumlah (Rp)<input type="number" min="1" max={dokumen.sisa} step="1" className="input mt-1" value={jumlah} onChange={(e) => setJumlah(e.target.value)} required /></label>
+    <label className="text-sm">Jumlah ({dokumen.currency_code || 'IDR'})<input type="number" min="1" max={dokumen.sisa} step="1" className="input mt-1" value={jumlah} onChange={(e) => setJumlah(e.target.value)} required /></label>
     <label className="text-sm">Masuk ke rekening<select className="input mt-1" value={rek} onChange={(e) => setRek(e.target.value)} required disabled={loadingRekening || !rekening.length}><option value="">{loadingRekening ? 'Memuat rekening…' : 'Pilih rekening'}</option>{rekening.map((r) => <option key={r.id} value={r.id}>{r.nama}</option>)}</select></label>
     <label className="text-sm">Catatan<input className="input mt-1" value={catatan} onChange={(e) => setCatatan(e.target.value)} /></label>
     {!loadingRekening && !rekening.length && !error && <p className="text-sm text-red-600 sm:col-span-2">Belum ada rekening aktif. Buat dulu di Kas &gt; Rekening Kas.</p>}
