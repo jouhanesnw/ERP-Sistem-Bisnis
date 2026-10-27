@@ -175,7 +175,28 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
       })
     }
     if (byKey.penjualan) {
-      result.push({ key: 'penjualan', label: 'Penjualan', icon: ShoppingCart, children: byKey.penjualan.children ?? [] })
+      result.push({
+        key: 'penjualan',
+        label: 'Penjualan',
+        icon: ShoppingCart,
+        children: [
+          { label: 'Penawaran Penjualan', href: '/penjualan/penawaran', icon: BadgeDollarSign, tone: 'green' },
+          { label: 'Pesanan Penjualan', icon: ClipboardList, tone: 'green', disabled: true },
+          { label: 'Pengiriman Pesanan', icon: Truck, tone: 'green', disabled: true },
+          { label: 'Uang Muka Penjualan', icon: Wallet, tone: 'green', disabled: true },
+          { label: 'Faktur Penjualan', href: '/penjualan/faktur', icon: Receipt, tone: 'green' },
+          { label: 'Penerimaan Penjualan', href: '/penjualan/pembayaran', icon: CreditCard, tone: 'green' },
+          { label: 'Retur Penjualan', icon: ArrowLeftRight, tone: 'green', disabled: true },
+          { label: 'Kategori Pelanggan', icon: Users, tone: 'blue', disabled: true },
+          { label: 'Kategori Penjualan', icon: Tags, tone: 'blue', disabled: true },
+          { label: 'Pelanggan', href: '/penjualan/pelanggan', icon: UserRound, tone: 'blue' },
+          { label: 'Penyesuaian Harga/Diskon', icon: Tags, tone: 'orange', disabled: true },
+          { label: 'Komisi Penjual', icon: BadgeDollarSign, tone: 'orange', disabled: true },
+          { label: 'Target Penjualan', icon: TrendingUp, tone: 'orange', disabled: true },
+          { label: 'SmartLink e-Commerce', icon: ShoppingCart, tone: 'orange', disabled: true },
+          { label: 'Check In', icon: Activity, tone: 'purple', disabled: true },
+        ],
+      })
     }
     if (byKey.pembelian) {
       result.push({ key: 'pembelian', label: 'Pembelian', icon: Package, children: byKey.pembelian.children ?? [] })
