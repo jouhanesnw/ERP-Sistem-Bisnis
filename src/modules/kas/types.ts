@@ -1,4 +1,4 @@
-export type Rekening = { id: string; nama: string; tipe: 'tunai' | 'bank' | 'ewallet'; nomor: string | null; saldo_awal: number; aktif: boolean; saldo: number }
+export type Rekening = { id: string; nama: string; tipe: 'tunai' | 'bank' | 'ewallet'; nomor: string | null; saldo_awal: number; aktif: boolean; saldo: number; currency_code: string }
 export type Kategori = { id: string; nama: string; jenis: 'masuk' | 'keluar'; aktif: boolean }
 export type Jenis = 'masuk' | 'keluar' | 'transfer'
 export type Transaksi = {
