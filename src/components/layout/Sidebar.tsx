@@ -441,7 +441,7 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
           />
           <section
             style={{
-              width: ['buku-besar', 'kas', 'aset-tetap', 'laporan'].includes(activePanel.key) ? 800 : activePanel.key === 'persediaan' ? 1200 : 860,
+              width: ['buku-besar', 'kas', 'aset-tetap', 'laporan'].includes(activePanel.key) ? 860 : activePanel.key === 'persediaan' ? 1200 : 860,
               maxWidth: 'calc(100vw - 6rem)',
             }}
             className="fixed left-20 top-[5rem] z-50 flex max-h-[calc(100vh-6rem)] flex-col overflow-hidden rounded-xl border border-[#e6e6e6] bg-[#fbfbfb] text-[#3d3d3d] shadow-[0_12px_35px_rgba(0,0,0,0.28)]"
@@ -465,7 +465,7 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
             </div>
 
             <div className="overflow-y-auto px-4 pb-4">
-              <div className={activePanel.key === 'buku-besar' || activePanel.key === 'kas' || activePanel.key === 'aset-tetap' || activePanel.key === 'laporan' ? "grid content-start grid-cols-2 gap-2 sm:grid-cols-3" : activePanel.key === 'persediaan' ? "grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6" : "grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"}>
+              <div className={activePanel.key === 'persediaan' ? "grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6" : "grid content-start grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"}>
                 {activePanel.children.map((child, index) => {
                   const TileIcon = getTileIcon(child.label, index, child.icon)
                   const active = !!child.href && (path === child.href || path.startsWith(child.href + '/'))
