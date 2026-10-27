@@ -4,6 +4,6 @@ import RekeningManager from '@/modules/kas/RekeningManager'
 export default async function Page() {
   const k = await getKasContext()
   if (!k) return <Denied module="Kas" />
-  const { rekening, kategori } = await loadKasBase(k.companyId)
-  return <RekeningManager companyId={k.companyId} rekening={rekening} perm={k.perm} />
+  const { rekening, currencies } = await loadKasBase(k.companyId)
+  return <RekeningManager companyId={k.companyId} rekening={rekening} perm={k.perm} currencies={currencies} />
 }
