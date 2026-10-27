@@ -1,5 +1,5 @@
 export type CurrencyOption = { code: string; name: string; symbol: string }
-export type CompanyCurrency = CurrencyOption & { id: string; company_id: string; is_default: boolean; is_active: boolean }
+export type ActiveCurrency = CurrencyOption & { is_default: boolean }\nexport type CompanyCurrency = CurrencyOption & { id: string; company_id: string; is_default: boolean; is_active: boolean }
 
 const FALLBACK_CODES = [
   'AED','AFN','ALL','AMD','ANG','AOA','ARS','AUD','AWG','AZN','BAM','BBD','BDT','BGN','BHD','BIF','BMD','BND','BOB','BRL','BSD','BTN','BWP','BYN','BZD',
