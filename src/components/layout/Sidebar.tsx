@@ -102,7 +102,7 @@ function getTileTone(label: string, customTone?: TileTone) {
 }
 
 function getTileClass(child: MenuTile, active: boolean) {
-  return `group relative flex h-[92px] min-h-[92px] flex-col items-center justify-between gap-1.5 rounded-lg border p-[10px] text-center shadow-sm transition duration-150 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1685d1] sm:h-[100px] sm:min-h-[100px] ${getTileTone(child.label, child.tone)} ${active ? 'ring-2 ring-inset ring-[#1685d1]' : ''}`
+  return `group relative flex w-[164px] h-[92px] min-h-[92px] flex-col items-center justify-between gap-1.5 rounded-lg border p-[10px] text-center shadow-sm transition duration-150 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1685d1] sm:h-[100px] sm:min-h-[100px] ${getTileTone(child.label, child.tone)} ${active ? 'ring-2 ring-inset ring-[#1685d1]' : ''}`
 }
 
 export default function Sidebar({ modules, companyName, open, onClose, onLogout, pendingPath }: {
@@ -465,14 +465,12 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
             </div>
 
             <div className="overflow-y-auto px-4 pb-4">
-              <div className={activePanel.key === 'persediaan' ? "grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6" : "grid content-start grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"}>
+              <div className="grid content-start gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, 164px)' }}>
                 {activePanel.children.map((child, index) => {
                   const TileIcon = getTileIcon(child.label, index, child.icon)
                   const active = !!child.href && (path === child.href || path.startsWith(child.href + '/'))
                   const pending = !!child.href && pendingPath === child.href
-const tileClass = ['buku-besar', 'kas', 'aset-tetap', 'laporan'].includes(activePanel.key)
-? `${getTileClass(child, active)} w-full max-w-[164px] justify-self-center`
-: getTileClass(child, active)
+const tileClass = getTileClass(child, active)
                   const icon = <span className="flex flex-1 items-center justify-center">
                     <TileIcon size={28} strokeWidth={1.8} className={`transition-transform ${child.disabled ? '' : 'group-hover:scale-105'}`} />
                   </span>
