@@ -418,6 +418,7 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
             <Power size={23} strokeWidth={1.8} />
           </button>
         </nav>
+      </aside>
 
       {tooltip ? (
         <div
