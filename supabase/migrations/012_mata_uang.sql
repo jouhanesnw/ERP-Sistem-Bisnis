@@ -373,7 +373,7 @@ begin
   values (d.company_id, p_tanggal, 'keluar', p_rekening, kat, p_jumlah, 'Pembayaran ' || d.nomor || ' - ' || coalesce(pemasok_nama, ''), d.currency_code)
   returning id into ktid;
   insert into public.pb_pembayaran (company_id, dokumen_id, tanggal, jumlah, rekening_id, kas_transaksi_id, catatan, currency_code)
-  values (d.company_id, d.id, p_tanggal, p_jumlah, ktid, p_rekening, p_catatan, d.currency_code) returning id into pid;
+  values (d.company_id, d.id, p_tanggal, p_jumlah, p_rekening, ktid, p_catatan, d.currency_code) returning id into pid;
   return pid;
 end $$;
 
