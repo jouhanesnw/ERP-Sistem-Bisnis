@@ -70,9 +70,9 @@ begin
   if tg_op = 'UPDATE' and new.currency_code = old.currency_code then return new; end if;
   if not exists (
     select 1 from public.company_currencies c
-    where c.company_id = new.company_id and c.code = new.currency_code and c.is_active
+    where c.company_id = new.company_id and c.code = new.currency_code
   ) then
-    raise exception 'Mata uang tidak aktif atau belum disimpan untuk perusahaan ini';
+    raise exception 'Mata uang belum disimpan untuk perusahaan ini';
   end if;
   return new;
 end $$;
