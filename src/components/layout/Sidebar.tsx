@@ -32,11 +32,13 @@ import {
 } from 'lucide-react'
 import type { ModuleDef, NavChild } from '@/config/modules'
 
+type TileTone = 'blue' | 'green' | 'purple'
+type MenuTile = { label: string; href?: string; icon?: LucideIcon; tone?: TileTone; disabled?: boolean }
 type SidebarItem = {
   key: string
   label: string
   icon: LucideIcon
-  children?: NavChild[]
+  children?: MenuTile[]
   disabled?: boolean
   separatorBefore?: boolean
 }
@@ -59,7 +61,8 @@ const TILE_ICONS: LucideIcon[] = [
   Activity,
 ]
 
-function getTileIcon(label: string, index: number): LucideIcon {
+function getTileIcon(label: string, index: number, customIcon?: LucideIcon): LucideIcon {
+  if (customIcon) return customIcon;
   const text = label.toLowerCase()
   if (text.includes('pelanggan') || text.includes('kontak')) return UserRound
   if (text.includes('pemasok') || text.includes('perusahaan') || text.includes('cabang')) return Building2
@@ -76,7 +79,10 @@ function getTileIcon(label: string, index: number): LucideIcon {
   return TILE_ICONS[index % TILE_ICONS.length]
 }
 
-function getTileTone(label: string) {
+function getTileTone(label: string, customTone?: TileTone) {
+  if (customTone === 'green') return 'border-[#78c94f] bg-[#dcfbd1] text-[#4d7c0f]'
+  if (customTone === 'purple') return 'border-[#bd75ee] bg-[#f3e2ff] text-[#6b21a8]'
+  if (customTone === 'blue') return 'border-[#46a9fb] bg-[#d7eaff] text-[#075985]'
   const text = label.toLowerCase()
   if (text.includes('berulang') || text.includes('akhir bulan') || text.includes('jatuh tempo')) {
     return 'border-[#78c94f] bg-[#dcfbd1] text-[#4d7c0f]'
@@ -108,7 +114,23 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
         key: 'perusahaan',
         label: 'Perusahaan',
         icon: Building2,
-        children: companySettings.length ? companySettings : [{ label: 'Profil Perusahaan', href: '/pengaturan/perusahaan' }],
+        children: [
+          { label: 'Mata Uang', icon: CreditCard, tone: 'blue', disabled: true },
+          { label: 'Cabang', icon: Building2, tone: 'blue', disabled: true },
+          { label: 'Departemen', icon: Landmark, tone: 'blue', disabled: true },
+          { label: 'Pajak', icon: Receipt, tone: 'blue', disabled: true },
+          { label: 'Syarat Pembayaran', icon: BadgeDollarSign, tone: 'blue', disabled: true },
+          { label: 'Pengiriman', icon: Truck, tone: 'blue', disabled: true },
+          { label: 'FOB', icon: FileText, tone: 'blue', disabled: true },
+          { label: 'Gaji/Tunjangan', icon: Wallet, tone: 'blue', disabled: true },
+          { label: 'Karyawan', icon: Users, tone: 'blue', disabled: true },
+          { label: 'Transaksi Berulang', icon: ClipboardCheck, tone: 'green', disabled: true },
+          { label: 'Proses Akhir Bulan', icon: CalendarDays, tone: 'green', disabled: true },
+          { label: 'Kontak', icon: UserRound, tone: 'purple', disabled: true },
+          { label: 'Transaksi Favorit', icon: ClipboardCheck, tone: 'purple', disabled: true },
+          { label: 'Kalender', icon: CalendarDays, tone: 'purple', disabled: true },
+          { label: 'Log Aktivitas', icon: Activity, tone: 'purple', disabled: true },
+        ],
       })
     }
     if (byKey.akuntansi) {
@@ -310,9 +332,29 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
             <div className="overflow-y-auto px-4 pb-4">
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {activePanel.children.map((child, index) => {
-                  const TileIcon = getTileIcon(child.label, index)
-                  const active = path === child.href || path.startsWith(child.href + '/')
-                  const pending = pendingPath === child.href
+                  const TileIcon = getTileIcon(child.label, index, child.icon)
+                  const active = !!child.href && (path === child.href || path.startsWith(child.href + '/'))
+                  const pending = !!child.href && pendingPath === child.href
+                  const tileClass = `group relative flex min-h-[92px] flex-col items-center justify-between gap-1.5 rounded-lg border p-2.5 text-center shadow-sm transition duration-150 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1685d1] sm:min-h-[100px] ${getTileTone(child.label, child.tone)} ${active ? 'ring-2 ring-inset ring-[#1685d1]' : ''}`
+                  const icon = <span className="flex flex-1 items-center justify-center">
+                    <TileIcon size={28} strokeWidth={1.8} className={`transition-transform ${child.disabled ? '' : 'group-hover:scale-105'}`} />
+                  </span>
+                  const label = <span className="text-[13px] font-medium leading-snug text-[#414b56]">{child.label}</span>
+                  if (!child.href || child.disabled) {
+                    return (
+                      <button
+                        key={child.href ?? child.label}
+                        type="button"
+                        disabled
+                        aria-label={child.label + ' — belum tersedia'}
+                        title="Fitur belum tersedia"
+                        className={`${tileClass} cursor-not-allowed`}
+                      >
+                        {icon}
+                        {label}
+                      </button>
+                    )
+                  }
                   return (
                     <Link
                       key={child.href}
@@ -320,12 +362,10 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
                       prefetch
                       onClick={closeMenus}
                       aria-current={active ? 'page' : undefined}
-                      className={`group relative flex min-h-[92px] flex-col items-center justify-between gap-1.5 rounded-lg border p-2.5 text-center shadow-sm transition duration-150 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1685d1] sm:min-h-[100px] ${getTileTone(child.label)} ${active ? 'ring-2 ring-inset ring-[#1685d1]' : ''}`}
+                      className={tileClass}
                     >
-                      <span className="flex flex-1 items-center justify-center">
-                        <TileIcon size={28} strokeWidth={1.8} className="transition-transform group-hover:scale-105" />
-                      </span>
-                      <span className="text-[13px] font-medium leading-snug text-[#414b56]">{child.label}</span>
+                      {icon}
+                      {label}
                       {pending ? <Loader2 size={13} className="absolute right-1.5 top-1.5 animate-spin" /> : null}
                     </Link>
                   )
