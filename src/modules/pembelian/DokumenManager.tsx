@@ -116,7 +116,7 @@ export default function DokumenManager({ companyId, jenis, pemasok, rekening, pe
       {form && <DokumenForm key={form.doc?.id ?? 'new'} sb={sb} companyId={companyId} jenis={jenis} currencies={currencies}
         pemasok={pemasokAktif.concat(pemasok.filter((p) => !p.aktif && p.id === form.doc?.pemasok_id))}
         doc={form.doc} items={form.items} onDone={() => { setForm(null); load() }} onCancel={() => setForm(null)} />}
-      {bayar && <BayarForm key={bayar.id} sb={sb} dokumen={bayar} rekening={rekening.filter((r) => r.aktif)}
+      {bayar && <BayarForm key={bayar.id} sb={sb} dokumen={bayar} rekening={rekening.filter((r) => r.aktif && r.currency_code === (bayar.currency_code || 'IDR'))}
         onDone={() => { setBayar(null); load() }} onCancel={() => setBayar(null)} />}
       <div className="card overflow-x-auto">
         <table className="w-full text-left text-sm">
@@ -268,7 +268,7 @@ function BayarForm({ sb, dokumen, rekening, onDone, onCancel }: {
     <label className="text-sm">Jumlah ({dokumen.currency_code || 'IDR'})<input type="number" min="1" max={dokumen.sisa} step="1" className="input mt-1" value={jumlah} onChange={(e) => setJumlah(e.target.value)} required /></label>
     <label className="text-sm">Bayar dari rekening<select className="input mt-1" value={rek} onChange={(e) => setRek(e.target.value)} required>{rekening.map((r) => <option key={r.id} value={r.id}>{r.nama}</option>)}</select></label>
     <label className="text-sm">Catatan<input className="input mt-1" value={catatan} onChange={(e) => setCatatan(e.target.value)} /></label>
-    {!rekening.length && <p className="text-sm text-red-600 sm:col-span-2">Belum ada rekening aktif. Buat dulu di Kas &gt; Rekening Kas.</p>}
+    {!rekening.length && <p className="text-sm text-red-600 sm:col-span-2">Belum ada rekening aktif dengan mata uang {dokumen.currency_code || 'IDR'}. Buat rekening dengan mata uang yang sama di Kas &gt; Rekening Kas.</p>}
     {error && <p className="text-sm text-red-600 sm:col-span-2">{error}</p>}
     <div className="flex gap-2 sm:col-span-2"><button className="btn btn-primary" disabled={busy || !rek}>{busy ? 'Menyimpan…' : 'Catat pembayaran'}</button><button type="button" className="btn" onClick={onCancel}>Batal</button></div>
   </form>
