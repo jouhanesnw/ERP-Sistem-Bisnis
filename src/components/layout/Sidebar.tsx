@@ -12,6 +12,7 @@ import {
   ClipboardCheck,
   FileSearch,
   History,
+  Home,
   Monitor,
   Table,
   TrendingUp,
@@ -330,6 +331,21 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
         aria-label={`Navigasi ERP untuk ${companyName}`}
       >
         <nav className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-2 py-3" aria-label="Menu utama">
+          <Link
+            href="/dashboard"
+            prefetch
+            onClick={closeMenus}
+            aria-label="Dashboard"
+            aria-current={path === '/dashboard' ? 'page' : undefined}
+            onMouseEnter={(event) => showTooltip(event, 'Dashboard')}
+            onMouseLeave={() => setTooltip(null)}
+            onFocus={(event) => showTooltip(event, 'Dashboard')}
+            onBlur={() => setTooltip(null)}
+            className={`group relative mb-1 flex h-12 items-center justify-center rounded-xl transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${path === '/dashboard' ? 'bg-white/15 text-white' : 'text-white/85'}`}
+          >
+            {path === '/dashboard' && <span className="absolute bottom-2 left-0 top-2 w-1 rounded-r-full bg-[#ef466b]" />}
+            <Home size={23} strokeWidth={1.8} />
+          </Link>
           {items.map((item) => {
             const Icon = item.icon
             const active = isItemActive(item)
