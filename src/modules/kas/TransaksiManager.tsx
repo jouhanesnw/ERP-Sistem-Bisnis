@@ -68,7 +68,7 @@ export default function TransaksiManager({ companyId, jenis, rekening, kategori,
         <label className="text-sm">Rekening
           <select className="input mt-1" value={rekFilter} onChange={(e) => setRekFilter(e.target.value)}>
             <option value="">Semua</option>
-            {rekening.map((r) => <option key={r.id} value={r.id}>{r.nama}</option>)}
+            {rekening.map((r) => <option key={r.id} value={r.id}>{r.nama} ({r.currency_code || 'IDR'})</option>)}
           </select>
         </label>
         <p className="ml-auto text-sm text-ink/60">{rows.length} transaksi · Total <b className="text-ink">{total}</b></p>
@@ -118,6 +118,7 @@ function TransaksiForm({ sb, companyId, jenis, rekening, kategori, initial, onDo
   const [tanggal, setTanggal] = useState(initial?.tanggal ?? isoDate(new Date()))
   const [asal, setAsal] = useState(initial?.rekening_id ?? rekening[0]?.id ?? '')
   const [tujuan, setTujuan] = useState(initial?.rekening_tujuan_id ?? '')
+  const currencyCode = rekening.find((r) => r.id === asal)?.currency_code ?? initial?.currency_code ?? 'IDR'
   const [kat, setKat] = useState(initial?.kategori_id ?? '')
   const [jumlah, setJumlah] = useState(initial ? String(initial.jumlah) : '')
   const [ket, setKet] = useState(initial?.keterangan ?? '')
@@ -142,7 +143,7 @@ function TransaksiForm({ sb, companyId, jenis, rekening, kategori, initial, onDo
       company_id: companyId, jenis, tanggal, rekening_id: asal,
       rekening_tujuan_id: jenis === 'transfer' ? tujuan : null,
       kategori_id: jenis === 'transfer' ? null : kat || null,
-      jumlah: Number(jumlah), keterangan: ket || null, bukti_path: bukti, currency_code: initial?.currency_code ?? 'IDR',
+      jumlah: Number(jumlah), keterangan: ket || null, bukti_path: bukti, currency_code: currencyCode,
     }
     const { error } = initial ? await sb.from('kas_transaksi').update(payload).eq('id', initial.id) : await sb.from('kas_transaksi').insert(payload)
     setBusy(false)
@@ -153,7 +154,7 @@ function TransaksiForm({ sb, companyId, jenis, rekening, kategori, initial, onDo
   return (
     <form onSubmit={submit} className="card grid gap-3 p-4 sm:grid-cols-2">
       <label className="text-sm">Tanggal<input type="date" className="input mt-1" value={tanggal} onChange={(e) => setTanggal(e.target.value)} required /></label>
-      <label className="text-sm">Jumlah ({initial?.currency_code ?? 'IDR'})<input type="number" min="1" step="1" className="input mt-1" value={jumlah} onChange={(e) => setJumlah(e.target.value)} required /></label>
+      <label className="text-sm">Jumlah ({currencyCode})<input type="number" min="1" step="1" className="input mt-1" value={jumlah} onChange={(e) => setJumlah(e.target.value)} required /></label>
       <label className="text-sm">{jenis === 'transfer' ? 'Dari rekening' : 'Rekening'}
         <select className="input mt-1" value={asal} onChange={(e) => setAsal(e.target.value)} required>
           {rekening.map((r) => <option key={r.id} value={r.id}>{r.nama}</option>)}
@@ -163,7 +164,7 @@ function TransaksiForm({ sb, companyId, jenis, rekening, kategori, initial, onDo
         <label className="text-sm">Ke rekening
           <select className="input mt-1" value={tujuan} onChange={(e) => setTujuan(e.target.value)} required>
             <option value="">Pilih rekening</option>
-            {rekening.filter((r) => r.id !== asal).map((r) => <option key={r.id} value={r.id}>{r.nama}</option>)}
+            {rekening.filter((r) => r.id !== asal && r.currency_code === currencyCode).map((r) => <option key={r.id} value={r.id}>{r.nama} ({r.currency_code})</option>)}
           </select>
         </label>
       ) : (
