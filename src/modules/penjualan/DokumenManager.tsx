@@ -22,12 +22,12 @@ export default function DokumenManager({ companyId, jenis, pelanggan, initialRow
   const [rows, setRows] = useState<Dokumen[]>(initialRows)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(initialError)
-  const firstLoad = useRef(true)
   const [filter, setFilter] = useState('semua')
   const [form, setForm] = useState<{ doc: Dokumen | null; items: Item[] } | null>(null)
   const [bayar, setBayar] = useState<Dokumen | null>(null)
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
+  const previousRange = useRef({ from, to })
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -43,12 +43,10 @@ export default function DokumenManager({ companyId, jenis, pelanggan, initialRow
   useEffect(() => {
     // The initial document list is rendered by the server. Fetch again only when
     // the user changes the date range, or after an explicit mutation calls load().
-    if (firstLoad.current) {
-      firstLoad.current = false
-      return
-    }
+    if (previousRange.current.from === from && previousRange.current.to === to) return
+    previousRange.current = { from, to }
     load()
-  }, [load])
+  }, [from, to, load])
 
   const visible = rows.filter((d) => filter === 'semua' || (filter === 'belum' ? d.status === 'terbit' && d.sisa > 0 : filter === 'lunas' ? d.status === 'terbit' && d.sisa <= 0 : d.status === filter))
   const piutang = rows.filter((d) => d.status === 'terbit').reduce((s, d) => s + Number(d.sisa), 0)
