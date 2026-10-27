@@ -287,14 +287,14 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
             onClick={() => setPanel(null)}
           />
           <section
-            className="fixed left-20 top-[5rem] z-50 flex max-h-[calc(100vh-6rem)] w-[calc(100vw-6rem)] max-w-[960px] flex-col overflow-hidden rounded-xl border border-[#e6e6e6] bg-[#fbfbfb] text-[#3d3d3d] shadow-[0_12px_35px_rgba(0,0,0,0.28)]"
+            className="fixed left-20 top-[5rem] z-50 flex max-h-[calc(100vh-6rem)] w-[calc(100vw-6rem)] max-w-[860px] flex-col overflow-hidden rounded-xl border border-[#e6e6e6] bg-[#fbfbfb] text-[#3d3d3d] shadow-[0_12px_35px_rgba(0,0,0,0.28)]"
             aria-label={activePanel.label}
             aria-modal="false"
             role="dialog"
           >
-            <div className="shrink-0 px-4 pb-4 pt-4 sm:px-5 sm:pt-5">
+            <div className="shrink-0 px-4 pb-3 pt-3 sm:px-4 sm:pt-4">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-xl font-normal text-[#555] sm:text-2xl">{activePanel.label}</h2>
+                <h2 className="text-lg font-normal text-[#555] sm:text-xl">{activePanel.label}</h2>
                 <button
                   type="button"
                   onClick={() => setPanel(null)}
@@ -304,11 +304,11 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
                   <ChevronRight size={20} className="rotate-180" />
                 </button>
               </div>
-              <div className="mt-4 h-[3px] w-full bg-[#ef466b]" />
+              <div className="mt-3 h-[2px] w-full bg-[#ef466b]" />
             </div>
 
-            <div className="overflow-y-auto px-4 pb-5 sm:px-5">
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+            <div className="overflow-y-auto px-4 pb-4">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {activePanel.children.map((child, index) => {
                   const TileIcon = getTileIcon(child.label, index)
                   const active = path === child.href || path.startsWith(child.href + '/')
@@ -320,13 +320,13 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
                       prefetch
                       onClick={closeMenus}
                       aria-current={active ? 'page' : undefined}
-                      className={`group relative flex min-h-[145px] flex-col items-center justify-between gap-3 rounded-lg border p-4 text-center shadow-sm transition duration-150 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1685d1] sm:min-h-[156px] ${getTileTone(child.label)} ${active ? 'ring-2 ring-inset ring-[#1685d1]' : ''}`}
+                      className={`group relative flex min-h-[108px] flex-col items-center justify-between gap-2 rounded-lg border p-3 text-center shadow-sm transition duration-150 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1685d1] sm:min-h-[118px] ${getTileTone(child.label)} ${active ? 'ring-2 ring-inset ring-[#1685d1]' : ''}`}
                     >
                       <span className="flex flex-1 items-center justify-center">
-                        <TileIcon size={42} strokeWidth={1.8} className="transition-transform group-hover:scale-105" />
+                        <TileIcon size={32} strokeWidth={1.8} className="transition-transform group-hover:scale-105" />
                       </span>
-                      <span className="text-sm font-medium leading-snug text-[#414b56] sm:text-base">{child.label}</span>
-                      {pending ? <Loader2 size={15} className="absolute animate-spin" /> : null}
+                      <span className="text-sm font-medium leading-snug text-[#414b56]">{child.label}</span>
+                      {pending ? <Loader2 size={13} className="absolute right-1.5 top-1.5 animate-spin" /> : null}
                     </Link>
                   )
                 })}
