@@ -461,7 +461,7 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
             </div>
 
             <div className="overflow-y-auto px-4 pb-4">
-              <div className={activePanel.key === 'buku-besar' || activePanel.key === 'kas' || activePanel.key === 'aset-tetap' || activePanel.key === 'laporan' ? "grid grid-cols-2 gap-2 sm:grid-cols-3" : activePanel.key === 'persediaan' ? "grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6" : "grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"}>
+              <div className={activePanel.key === 'buku-besar' || activePanel.key === 'kas' || activePanel.key === 'aset-tetap' || activePanel.key === 'laporan' ? "grid content-start grid-cols-2 gap-2 sm:grid-cols-3" : activePanel.key === 'persediaan' ? "grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6" : "grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"}>
                 {activePanel.children.map((child, index) => {
                   const TileIcon = getTileIcon(child.label, index, child.icon)
                   const active = !!child.href && (path === child.href || path.startsWith(child.href + '/'))
