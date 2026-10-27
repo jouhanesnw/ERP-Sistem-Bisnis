@@ -10,5 +10,5 @@ export type Pembayaran = {
   id: string; tanggal: string; jumlah: number; rekening_id: string; catatan: string | null; dokumen_id: string; currency_code: string
   pb_dokumen: { nomor: string; pemasok_id: string } | null
 }
-export type RekeningPilihan = { id: string; nama: string; aktif: boolean }
+export type RekeningPilihan = { id: string; nama: string; aktif: boolean; currency_code: string }
 export type PbPerm = { create: boolean; edit: boolean; delete: boolean }
