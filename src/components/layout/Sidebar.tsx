@@ -470,7 +470,7 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
                   const TileIcon = getTileIcon(child.label, index, child.icon)
                   const active = !!child.href && (path === child.href || path.startsWith(child.href + '/'))
                   const pending = !!child.href && pendingPath === child.href
-                  const tileClass = getTileClass(child, active)
+                  const tileClass = ['buku-besar', 'kas', 'aset-tetap', 'laporan'].includes(activePanel.key)\n                    ? `${getTileClass(child, active)} w-full max-w-[164px] justify-self-center`\n                    : getTileClass(child, active)
                   const icon = <span className="flex flex-1 items-center justify-center">
                     <TileIcon size={28} strokeWidth={1.8} className={`transition-transform ${child.disabled ? '' : 'group-hover:scale-105'}`} />
                   </span>
