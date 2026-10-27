@@ -199,7 +199,24 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
       })
     }
     if (byKey.pembelian) {
-      result.push({ key: 'pembelian', label: 'Pembelian', icon: Package, children: byKey.pembelian.children ?? [] })
+      result.push({
+        key: 'pembelian',
+        label: 'Pembelian',
+        icon: Package,
+        children: [
+          { label: 'Pesanan Pembelian', href: '/pembelian/pesanan', icon: ClipboardList, tone: 'green' },
+          { label: 'Penerimaan Barang', icon: Package, tone: 'green', disabled: true },
+          { label: 'Uang Muka Pembelian', icon: Wallet, tone: 'green', disabled: true },
+          { label: 'Faktur Pembelian', href: '/pembelian/faktur', icon: Receipt, tone: 'green' },
+          { label: 'Pembayaran Pembelian', href: '/pembelian/pembayaran', icon: CreditCard, tone: 'green' },
+          { label: 'Retur Pembelian', icon: ArrowLeftRight, tone: 'green', disabled: true },
+          { label: 'Harga Pemasok', icon: BadgeDollarSign, tone: 'orange', disabled: true },
+          { label: 'Kategori Pemasok', icon: Users, tone: 'blue', disabled: true },
+          { label: 'Pemasok', href: '/pembelian/pemasok', icon: UserRound, tone: 'blue' },
+          { label: 'Perintah Pembayaran', icon: FileText, tone: 'green', disabled: true },
+          { label: 'Transfer Pemasok', icon: ArrowLeftRight, tone: 'purple', disabled: true },
+        ],
+      })
     }
     if (byKey.produk) {
       result.push({ key: 'persediaan', label: 'Persediaan', icon: Boxes, children: byKey.produk.children ?? [] })
