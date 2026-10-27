@@ -334,7 +334,7 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
         className={`fixed inset-y-0 left-0 z-40 flex w-20 flex-col border-r border-white/10 bg-gradient-to-b from-[#193f70] to-[#10294e] text-white shadow-lg transition-transform duration-200 lg:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`}
         aria-label={`Navigasi ERP untuk ${companyName}`}
       >
-        <nav className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-2 py-3" aria-label="Menu utama">
+        <nav className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-2 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Menu utama">
           <Link
             href="/dashboard"
             prefetch
@@ -391,9 +391,7 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
               </div>
             )
           })}
-        </nav>
-
-        <div className="space-y-1 border-t border-white/15 px-2 py-3">
+          <div className="mx-2 my-3 border-t border-white/15" aria-hidden="true" />
           <Link
             href="/data-usaha"
             prefetch
@@ -419,8 +417,7 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
           >
             <Power size={23} strokeWidth={1.8} />
           </button>
-        </div>
-      </aside>
+        </nav>
 
       {tooltip ? (
         <div
