@@ -102,7 +102,7 @@ function getTileTone(label: string, customTone?: TileTone) {
 }
 
 function getTileClass(child: MenuTile, active: boolean) {
-  return `group relative flex min-h-[92px] flex-col items-center justify-between gap-1.5 rounded-lg border p-2.5 text-center shadow-sm transition duration-150 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1685d1] sm:min-h-[100px] ${getTileTone(child.label, child.tone)} ${active ? 'ring-2 ring-inset ring-[#1685d1]' : ''}`
+  return `group relative flex h-[92px] min-h-[92px] flex-col items-center justify-between gap-1.5 rounded-lg border p-[10px] text-center shadow-sm transition duration-150 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1685d1] sm:h-[100px] sm:min-h-[100px] ${getTileTone(child.label, child.tone)} ${active ? 'ring-2 ring-inset ring-[#1685d1]' : ''}`
 }
 
 export default function Sidebar({ modules, companyName, open, onClose, onLogout, pendingPath }: {
