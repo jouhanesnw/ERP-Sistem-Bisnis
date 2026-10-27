@@ -3,7 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Paperclip, Pencil, Plus, Trash2 } from 'lucide-react'
 import { supabaseBrowser } from '@/lib/supabase/client'
-import { isoDate, monthStart, rupiah, tglID } from './format'
+import { isoDate, monthStart, tglID } from './format'
+import { formatCurrency } from '@/modules/pengaturan/currencies'
 import type { Jenis, KasPerm, Kategori, Rekening, Transaksi } from './types'
 
 const TITLE: Record<Jenis, string> = { masuk: 'Kas Masuk', keluar: 'Kas Keluar', transfer: 'Transfer Antar Rekening' }
@@ -50,7 +51,7 @@ export default function TransaksiManager({ companyId, jenis, rekening, kategori,
     load()
   }
 
-  const total = rows.reduce((s, r) => s + Number(r.jumlah), 0)
+  const total = Object.entries(rows.reduce<Record<string, number>>((acc, row) => { const code = row.currency_code || 'IDR'; acc[code] = (acc[code] ?? 0) + Number(row.jumlah); return acc }, {})).map(([code, amount]) => formatCurrency(amount, code)).join(' · ') || formatCurrency(0, 'IDR')
 
   return (
     <div className="space-y-4">
@@ -70,7 +71,7 @@ export default function TransaksiManager({ companyId, jenis, rekening, kategori,
             {rekening.map((r) => <option key={r.id} value={r.id}>{r.nama}</option>)}
           </select>
         </label>
-        <p className="ml-auto text-sm text-ink/60">{rows.length} transaksi · Total <b className="text-ink">{rupiah(total)}</b></p>
+        <p className="ml-auto text-sm text-ink/60">{rows.length} transaksi · Total <b className="text-ink">{total}</b></p>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
@@ -94,7 +95,7 @@ export default function TransaksiManager({ companyId, jenis, rekening, kategori,
                 <td className="whitespace-nowrap p-3">{tglID(r.tanggal)}</td>
                 <td className="p-3">{r.keterangan || '—'}{r.kategori_id && <span className="block text-xs text-ink/50">{namaKat[r.kategori_id]}</span>}</td>
                 <td className="p-3">{r.jenis === 'transfer' ? `${namaRek[r.rekening_id]} → ${namaRek[r.rekening_tujuan_id!]}` : namaRek[r.rekening_id]}</td>
-                <td className="p-3 text-right tabular-nums">{rupiah(Number(r.jumlah))}</td>
+                <td className="p-3 text-right tabular-nums">{formatCurrency(Number(r.jumlah), r.currency_code || 'IDR')}</td>
                 <td className="space-x-1 whitespace-nowrap p-3 text-right">
                   {r.bukti_path && <button className="btn px-2" onClick={() => openBukti(r.bukti_path!)} aria-label="Lihat bukti"><Paperclip size={15} /></button>}
                   {perm.edit && <button className="btn px-2" onClick={() => setForm(r)} aria-label="Ubah"><Pencil size={15} /></button>}
@@ -141,7 +142,7 @@ function TransaksiForm({ sb, companyId, jenis, rekening, kategori, initial, onDo
       company_id: companyId, jenis, tanggal, rekening_id: asal,
       rekening_tujuan_id: jenis === 'transfer' ? tujuan : null,
       kategori_id: jenis === 'transfer' ? null : kat || null,
-      jumlah: Number(jumlah), keterangan: ket || null, bukti_path: bukti,
+      jumlah: Number(jumlah), keterangan: ket || null, bukti_path: bukti, currency_code: initial?.currency_code ?? 'IDR',
     }
     const { error } = initial ? await sb.from('kas_transaksi').update(payload).eq('id', initial.id) : await sb.from('kas_transaksi').insert(payload)
     setBusy(false)
@@ -152,7 +153,7 @@ function TransaksiForm({ sb, companyId, jenis, rekening, kategori, initial, onDo
   return (
     <form onSubmit={submit} className="card grid gap-3 p-4 sm:grid-cols-2">
       <label className="text-sm">Tanggal<input type="date" className="input mt-1" value={tanggal} onChange={(e) => setTanggal(e.target.value)} required /></label>
-      <label className="text-sm">Jumlah (Rp)<input type="number" min="1" step="1" className="input mt-1" value={jumlah} onChange={(e) => setJumlah(e.target.value)} required /></label>
+      <label className="text-sm">Jumlah ({initial?.currency_code ?? 'IDR'})<input type="number" min="1" step="1" className="input mt-1" value={jumlah} onChange={(e) => setJumlah(e.target.value)} required /></label>
       <label className="text-sm">{jenis === 'transfer' ? 'Dari rekening' : 'Rekening'}
         <select className="input mt-1" value={asal} onChange={(e) => setAsal(e.target.value)} required>
           {rekening.map((r) => <option key={r.id} value={r.id}>{r.nama}</option>)}
