@@ -440,7 +440,7 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
             onClick={() => setPanel(null)}
           />
           <section
-            className={`fixed left-20 top-[5rem] z-50 flex max-h-[calc(100vh-6rem)] w-[calc(100vw-6rem)] ${activePanel.key === 'persediaan' ? 'max-w-[1200px]' : activePanel.key === 'aset-tetap' || activePanel.key === 'laporan' ? 'max-w-[640px]' : 'max-w-[860px]'} flex-col overflow-hidden rounded-xl border border-[#e6e6e6] bg-[#fbfbfb] text-[#3d3d3d] shadow-[0_12px_35px_rgba(0,0,0,0.28)]`}
+            className={`fixed left-20 top-[5rem] z-50 flex max-h-[calc(100vh-6rem)] w-[calc(100vw-6rem)] ${activePanel.key === 'persediaan' ? 'max-w-[1200px]' : ['buku-besar', 'kas', 'aset-tetap', 'laporan'].includes(activePanel.key) ? 'max-w-[640px]' : 'max-w-[860px]'} flex-col overflow-hidden rounded-xl border border-[#e6e6e6] bg-[#fbfbfb] text-[#3d3d3d] shadow-[0_12px_35px_rgba(0,0,0,0.28)]`}
             aria-label={activePanel.label}
             aria-modal="false"
             role="dialog"
