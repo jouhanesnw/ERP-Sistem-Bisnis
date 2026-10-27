@@ -109,7 +109,6 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
   const items = useMemo<SidebarItem[]>(() => {
     const result: SidebarItem[] = []
     if (byKey.pengaturan) {
-      const companySettings = (byKey.pengaturan.children ?? []).filter((child) => child.href === '/pengaturan/perusahaan')
       result.push({
         key: 'perusahaan',
         label: 'Perusahaan',
