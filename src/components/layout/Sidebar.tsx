@@ -440,8 +440,11 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
             onClick={() => setPanel(null)}
           />
           <section
-            style={{ maxWidth: activePanel.key === 'persediaan' ? 1200 : ['buku-besar', 'kas', 'aset-tetap', 'laporan'].includes(activePanel.key) ? 640 : 860 }}
-            className="fixed left-20 top-[5rem] z-50 flex max-h-[calc(100vh-6rem)] w-[calc(100vw-6rem)] flex-col overflow-hidden rounded-xl border border-[#e6e6e6] bg-[#fbfbfb] text-[#3d3d3d] shadow-[0_12px_35px_rgba(0,0,0,0.28)]"
+            style={{
+              width: ['buku-besar', 'kas', 'aset-tetap', 'laporan'].includes(activePanel.key) ? 640 : activePanel.key === 'persediaan' ? 1200 : 860,
+              maxWidth: 'calc(100vw - 6rem)',
+            }}
+            className="fixed left-20 top-[5rem] z-50 flex max-h-[calc(100vh-6rem)] flex-col overflow-hidden rounded-xl border border-[#e6e6e6] bg-[#fbfbfb] text-[#3d3d3d] shadow-[0_12px_35px_rgba(0,0,0,0.28)]"
             aria-label={activePanel.label}
             aria-modal="false"
             role="dialog"
