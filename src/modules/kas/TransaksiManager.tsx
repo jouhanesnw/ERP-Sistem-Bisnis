@@ -130,6 +130,7 @@ function TransaksiForm({ sb, companyId, jenis, rekening, kategori, initial, onDo
     e.preventDefault()
     setError(null)
     if (jenis === 'transfer' && (!tujuan || tujuan === asal)) return setError('Rekening tujuan harus dipilih dan berbeda dari rekening asal.')
+    if (jenis === 'transfer' && rekening.find((r) => r.id === tujuan)?.currency_code !== currencyCode) return setError('Rekening asal dan tujuan harus menggunakan mata uang yang sama.')
     setBusy(true)
     let bukti = initial?.bukti_path ?? null
     if (file) {
