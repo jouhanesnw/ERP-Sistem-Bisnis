@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useMemo, useState, type MouseEvent, type SyntheticEvent } from 'react'
+import { useEffect, useMemo, useState, type SyntheticEvent } from 'react'
 import {
   Activity,
   ArrowLeftRight,
@@ -9,7 +9,6 @@ import {
   BookOpen,
   Building2,
   CalendarDays,
-  ChartNoAxesColumn,
   ClipboardCheck,
   ClipboardList,
   CreditCard,
@@ -69,7 +68,7 @@ function getTileIcon(label: string, index: number): LucideIcon {
   if (text.includes('transfer')) return ArrowLeftRight
   if (text.includes('gudang') || text.includes('stok') || text.includes('persediaan')) return Boxes
   if (text.includes('produk') || text.includes('pesanan')) return Package
-  if (text.includes('laporan') || text.includes('aktivitas')) return ChartNoAxesColumn
+  if (text.includes('laporan') || text.includes('aktivitas')) return ClipboardList
   if (text.includes('akun') || text.includes('buku besar')) return BookOpen
   if (text.includes('pengaturan') || text.includes('anggota') || text.includes('akses')) return Users
   if (text.includes('kategori')) return Tags
@@ -174,7 +173,7 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
     setTooltip({ label, top: rect.top + rect.height / 2 })
   }
 
-  function togglePanel(event: MouseEvent<HTMLButtonElement>, item: SidebarItem) {
+  function togglePanel(item: SidebarItem) {
     if (!item.children?.length) return
     setTooltip(null)
     setPanel((current) => current === item.key ? null : item.key)
@@ -222,7 +221,7 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
                 ) : (
                   <button
                     type="button"
-                    onClick={(event) => togglePanel(event, item)}
+                    onClick={() => togglePanel(item)}
                     aria-label={item.label}
                     aria-expanded={selected}
                     onMouseEnter={(event) => showTooltip(event, item.label)}
@@ -321,7 +320,7 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
                       prefetch
                       onClick={closeMenus}
                       aria-current={active ? 'page' : undefined}
-                      className={`group flex min-h-[145px] flex-col items-center justify-between gap-3 rounded-lg border p-4 text-center shadow-sm transition duration-150 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1685d1] sm:min-h-[156px] ${getTileTone(child.label)} ${active ? 'ring-2 ring-inset ring-[#1685d1]' : ''}`}
+                      className={`group relative flex min-h-[145px] flex-col items-center justify-between gap-3 rounded-lg border p-4 text-center shadow-sm transition duration-150 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1685d1] sm:min-h-[156px] ${getTileTone(child.label)} ${active ? 'ring-2 ring-inset ring-[#1685d1]' : ''}`}
                     >
                       <span className="flex flex-1 items-center justify-center">
                         <TileIcon size={42} strokeWidth={1.8} className="transition-transform group-hover:scale-105" />
