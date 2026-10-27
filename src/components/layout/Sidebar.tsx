@@ -29,6 +29,7 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
 }) {
   const path = usePathname()
   const [flyout, setFlyout] = useState<{ key: string; top: number } | null>(null)
+  const [tooltip, setTooltip] = useState<{ label: string; top: number } | null>(null)
   const byKey = useMemo(() => Object.fromEntries(modules.map((module) => [module.key, module])), [modules])
 
   const items = useMemo<SidebarItem[]>(() => {
@@ -86,6 +87,11 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [flyout])
 
+  function showTooltip(event: MouseEvent<HTMLElement>, label: string) {
+    const rect = event.currentTarget.getBoundingClientRect()
+    setTooltip({ label, top: rect.top + rect.height / 2 })
+  }
+
   function toggleFlyout(event: MouseEvent<HTMLButtonElement>, item: SidebarItem) {
     if (!item.children?.length) return
     if (flyout?.key === item.key) {
@@ -131,28 +137,28 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
                     onClick={(event) => toggleFlyout(event, item)}
                     aria-label={item.label}
                     aria-expanded={selected}
-                    title={item.label}
+                    onMouseEnter={(event) => showTooltip(event, item.label)}
+                    onMouseLeave={() => setTooltip(null)}
+                    onFocus={(event) => showTooltip(event, item.label)}
+                    onBlur={() => setTooltip(null)}
                     className={`group relative flex h-12 w-full items-center justify-center rounded-xl transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${active || selected ? 'bg-white/15 text-white' : 'text-white/85'}`}
                   >
                     {active && <span className="absolute bottom-2 left-0 top-2 w-1 rounded-r-full bg-[#ef466b]" />}
                     <Icon size={23} strokeWidth={1.8} />
                     {pending && <Loader2 size={12} className="absolute right-1 top-1 animate-spin" />}
-                    <span className="pointer-events-none absolute left-[4.25rem] top-1/2 z-[60] -translate-y-1/2 whitespace-nowrap rounded-md bg-slate-950 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-                      {item.label}
-                    </span>
                   </button>
                 ) : item.disabled ? (
                   <button
                     type="button"
                     disabled
                     aria-label={item.label + ', belum tersedia'}
-                    title={item.label + ' — belum tersedia'}
+                    onMouseEnter={(event) => showTooltip(event, item.label + ' · Belum tersedia')}
+                    onMouseLeave={() => setTooltip(null)}
+                    onFocus={(event) => showTooltip(event, item.label + ' · Belum tersedia')}
+                    onBlur={() => setTooltip(null)}
                     className="group relative flex h-12 w-full cursor-not-allowed items-center justify-center rounded-xl text-white/35"
                   >
                     <Icon size={23} strokeWidth={1.8} />
-                    <span className="pointer-events-none absolute left-[4.25rem] top-1/2 z-[60] -translate-y-1/2 whitespace-nowrap rounded-md bg-slate-950 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-                      {item.label} · Belum tersedia
-                    </span>
                   </button>
                 ) : (
                   <Link
@@ -161,15 +167,15 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
                     onClick={closeMenus}
                     aria-current={active ? 'page' : undefined}
                     aria-label={item.label}
-                    title={item.label}
+                    onMouseEnter={(event) => showTooltip(event, item.label)}
+                    onMouseLeave={() => setTooltip(null)}
+                    onFocus={(event) => showTooltip(event, item.label)}
+                    onBlur={() => setTooltip(null)}
                     className={`group relative flex h-12 items-center justify-center rounded-xl transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${active ? 'bg-white/15 text-white' : 'text-white/85'} ${pending ? 'bg-white/10' : ''}`}
                   >
                     {active && <span className="absolute bottom-2 left-0 top-2 w-1 rounded-r-full bg-[#ef466b]" />}
                     <Icon size={23} strokeWidth={1.8} />
                     {pending && <Loader2 size={12} className="absolute right-1 top-1 animate-spin" />}
-                    <span className="pointer-events-none absolute left-[4.25rem] top-1/2 z-[60] -translate-y-1/2 whitespace-nowrap rounded-md bg-slate-950 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-                      {item.label}
-                    </span>
                   </Link>
                 )}
               </div>
@@ -183,24 +189,30 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
             prefetch
             onClick={closeMenus}
             aria-label="Data Usaha"
-            title="Data Usaha"
+            onMouseEnter={(event) => showTooltip(event, "Data Usaha")}
+            onMouseLeave={() => setTooltip(null)}
+            onFocus={(event) => showTooltip(event, "Data Usaha")}
+            onBlur={() => setTooltip(null)}
             className="group relative flex h-12 items-center justify-center rounded-xl text-white/85 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
           >
             <Database size={22} strokeWidth={1.8} />
-            <span className="pointer-events-none absolute left-[4.25rem] top-1/2 z-[60] -translate-y-1/2 whitespace-nowrap rounded-md bg-slate-950 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">Data Usaha</span>
           </Link>
           <button
             type="button"
             onClick={() => { setFlyout(null); onLogout() }}
             aria-label="Keluar"
-            title="Keluar"
+            onMouseEnter={(event) => showTooltip(event, "Keluar")}
+            onMouseLeave={() => setTooltip(null)}
+            onFocus={(event) => showTooltip(event, "Keluar")}
+            onBlur={() => setTooltip(null)}
             className="group relative flex h-12 w-full items-center justify-center rounded-xl text-white/85 transition-colors hover:bg-red-500/20 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
           >
             <Power size={23} strokeWidth={1.8} />
-            <span className="pointer-events-none absolute left-[4.25rem] top-1/2 z-[60] -translate-y-1/2 whitespace-nowrap rounded-md bg-slate-950 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">Keluar</span>
           </button>
         </div>
       </aside>
+
+      {tooltip ? <div className="pointer-events-none fixed left-[5.25rem] z-[70] -translate-y-1/2 whitespace-nowrap rounded-md bg-slate-950 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg" style={{ top: tooltip.top }}>{tooltip.label}</div> : null}
 
       {activeFlyout?.children?.length ? (
         <div
