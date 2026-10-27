@@ -21,6 +21,7 @@ import {
   FileText,
   Landmark,
   Loader2,
+  MapPin,
   Package,
   Power,
   Receipt,
@@ -243,7 +244,20 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
         ],
       })
     }
-    result.push({ key: 'aset-tetap', label: 'Aset Tetap', icon: Landmark, disabled: true })
+    result.push({
+      key: 'aset-tetap',
+      label: 'Aset Tetap',
+      icon: Landmark,
+      children: [
+        { label: 'Aset Tetap', icon: Landmark, tone: 'blue', disabled: true },
+        { label: 'Kategori Aset', icon: Boxes, tone: 'blue', disabled: true },
+        { label: 'Kategori Aset Tetap Pajak', icon: Receipt, tone: 'blue', disabled: true },
+        { label: 'Perubahan Aset Tetap', icon: Activity, tone: 'green', disabled: true },
+        { label: 'Disposisi Aset Tetap', icon: ClipboardCheck, tone: 'green', disabled: true },
+        { label: 'Pindah Aset', icon: ArrowLeftRight, tone: 'green', disabled: true },
+        { label: 'Aset per Lokasi', icon: MapPin, tone: 'purple', disabled: true },
+      ],
+    })
 
     const reports: NavChild[] = [
       ...(byKey.kas?.children?.filter((child) => child.href === '/kas/laporan') ?? []),
@@ -399,7 +413,7 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
             onClick={() => setPanel(null)}
           />
           <section
-            className={`fixed left-20 top-[5rem] z-50 flex max-h-[calc(100vh-6rem)] w-[calc(100vw-6rem)] ${activePanel.key === 'persediaan' ? 'max-w-[1200px]' : 'max-w-[860px]'} flex-col overflow-hidden rounded-xl border border-[#e6e6e6] bg-[#fbfbfb] text-[#3d3d3d] shadow-[0_12px_35px_rgba(0,0,0,0.28)]`}
+            className={`fixed left-20 top-[5rem] z-50 flex max-h-[calc(100vh-6rem)] w-[calc(100vw-6rem)] ${activePanel.key === 'persediaan' ? 'max-w-[1200px]' : activePanel.key === 'aset-tetap' ? 'max-w-[640px]' : 'max-w-[860px]'} flex-col overflow-hidden rounded-xl border border-[#e6e6e6] bg-[#fbfbfb] text-[#3d3d3d] shadow-[0_12px_35px_rgba(0,0,0,0.28)]`}
             aria-label={activePanel.label}
             aria-modal="false"
             role="dialog"
@@ -420,7 +434,7 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
             </div>
 
             <div className="overflow-y-auto px-4 pb-4">
-              <div className={activePanel.key === 'buku-besar' || activePanel.key === 'kas' ? "grid grid-cols-2 gap-2 sm:grid-cols-3" : activePanel.key === 'persediaan' ? "grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6" : "grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"}>
+              <div className={activePanel.key === 'buku-besar' || activePanel.key === 'kas' || activePanel.key === 'aset-tetap' ? "grid grid-cols-2 gap-2 sm:grid-cols-3" : activePanel.key === 'persediaan' ? "grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6" : "grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"}>
                 {activePanel.children.map((child, index) => {
                   const TileIcon = getTileIcon(child.label, index, child.icon)
                   const active = !!child.href && (path === child.href || path.startsWith(child.href + '/'))
