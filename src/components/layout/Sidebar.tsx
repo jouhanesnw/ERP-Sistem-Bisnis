@@ -10,6 +10,11 @@ import {
   Building2,
   CalendarDays,
   ClipboardCheck,
+  FileSearch,
+  History,
+  Monitor,
+  Table,
+  TrendingUp,
   ClipboardList,
   CreditCard,
   Database,
@@ -32,7 +37,7 @@ import {
 } from 'lucide-react'
 import type { ModuleDef, NavChild } from '@/config/modules'
 
-type TileTone = 'blue' | 'green' | 'purple'
+type TileTone = 'blue' | 'green' | 'purple' | 'orange'
 type MenuTile = { label: string; href?: string; icon?: LucideIcon; tone?: TileTone; disabled?: boolean }
 type SidebarItem = {
   key: string
@@ -82,6 +87,7 @@ function getTileIcon(label: string, index: number, customIcon?: LucideIcon): Luc
 function getTileTone(label: string, customTone?: TileTone) {
   if (customTone === 'green') return 'border-[#78c94f] bg-[#dcfbd1] text-[#4d7c0f]'
   if (customTone === 'purple') return 'border-[#bd75ee] bg-[#f3e2ff] text-[#6b21a8]'
+  if (customTone === 'orange') return 'border-[#ff8a36] bg-[#ffead7] text-[#c45100]'
   if (customTone === 'blue') return 'border-[#46a9fb] bg-[#d7eaff] text-[#075985]'
   const text = label.toLowerCase()
   if (text.includes('berulang') || text.includes('akhir bulan') || text.includes('jatuh tempo')) {
@@ -137,7 +143,17 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
         key: 'buku-besar',
         label: 'Buku Besar',
         icon: BookOpen,
-        children: byKey.akuntansi.children ?? [{ label: 'Buku Besar', href: '/akuntansi/buku-besar' }],
+        children: [
+          { label: 'Akun Perkiraan', href: '/akuntansi/akun', icon: Wallet, tone: 'blue' },
+          { label: 'Pencatatan Beban', icon: ClipboardList, tone: 'green', disabled: true },
+          { label: 'Pencatatan Gaji', icon: Receipt, tone: 'green', disabled: true },
+          { label: 'Jurnal Umum', href: '/akuntansi/jurnal', icon: Table, tone: 'green' },
+          { label: 'Monitor Anggaran', icon: Monitor, tone: 'purple', disabled: true },
+          { label: 'Transfer Anggaran', icon: ArrowLeftRight, tone: 'green', disabled: true },
+          { label: 'Anggaran', icon: TrendingUp, tone: 'orange', disabled: true },
+          { label: 'Histori Akun', href: '/akuntansi/buku-besar', icon: History, tone: 'purple' },
+          { label: 'Log Aktivitas Jurnal', icon: FileSearch, tone: 'purple', disabled: true },
+        ],
       })
     }
     if (byKey.kas) {
@@ -329,7 +345,7 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
             </div>
 
             <div className="overflow-y-auto px-4 pb-4">
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              <div className={activePanel.key === 'buku-besar' ? "grid grid-cols-2 gap-2 sm:grid-cols-3" : "grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"}>
                 {activePanel.children.map((child, index) => {
                   const TileIcon = getTileIcon(child.label, index, child.icon)
                   const active = !!child.href && (path === child.href || path.startsWith(child.href + '/'))
