@@ -7,6 +7,7 @@ import { supabaseBrowser } from '@/lib/supabase/client'
 import { addDays, isoDate, tglID } from '@/lib/format'
 import { formatCurrency, type ActiveCurrency } from '@/modules/pengaturan/currencies'
 import type { PaymentTerm } from '@/modules/pengaturan/paymentTerms'
+import type { ShippingMethod } from '@/modules/pengaturan/shipping'
 import type { Dokumen, Item, Jenis, Pemasok, PbPerm, RekeningPilihan } from './types'
 
 const LABEL: Record<string, string> = { draft: 'Draft', dipesan: 'Dipesan', diterima: 'Diterima', terbit: 'Terbit', batal: 'Batal' }
@@ -26,8 +27,8 @@ type ProdukPilihan = { id: string; kode: string | null; nama: string; satuan: st
 type GudangPilihan = { id: string; kode: string; nama: string; is_default: boolean }
 const fmtN = (n: number) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(n)
 
-export default function DokumenManager({ companyId, jenis, pemasok, rekening, perm, currencies }: {
-  companyId: string; jenis: Jenis; pemasok: Pemasok[]; rekening: RekeningPilihan[]; perm: PbPerm; currencies: ActiveCurrency[]
+export default function DokumenManager({ companyId, jenis, pemasok, rekening, perm, currencies, shippingMethods }: {
+  companyId: string; jenis: Jenis; pemasok: Pemasok[]; rekening: RekeningPilihan[]; perm: PbPerm; currencies: ActiveCurrency[]; shippingMethods: ShippingMethod[]
 }) {
   const sb = useMemo(() => supabaseBrowser(), [])
   const router = useRouter()
@@ -114,7 +115,7 @@ export default function DokumenManager({ companyId, jenis, pemasok, rekening, pe
         <p className="ml-auto text-sm text-ink/60">{visible.length} dokumen</p>
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
-      {form && <DokumenForm key={form.doc?.id ?? 'new'} sb={sb} companyId={companyId} jenis={jenis} currencies={currencies}
+      {form && <DokumenForm key={form.doc?.id ?? 'new'} sb={sb} companyId={companyId} jenis={jenis} currencies={currencies} shippingMethods={shippingMethods}
         pemasok={pemasokAktif.concat(pemasok.filter((p) => !p.aktif && p.id === form.doc?.pemasok_id))}
         doc={form.doc} items={form.items} onDone={() => { setForm(null); load() }} onCancel={() => setForm(null)} />}
       {bayar && <BayarForm key={bayar.id} sb={sb} dokumen={bayar} rekening={rekening.filter((r) => r.aktif && r.currency_code === (bayar.currency_code || 'IDR'))}
@@ -122,7 +123,7 @@ export default function DokumenManager({ companyId, jenis, pemasok, rekening, pe
       <div className="card overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead><tr className="border-b border-line text-ink/60">
-            <th className="p-3 font-medium">Nomor</th><th className="p-3 font-medium">Pemasok</th>
+            <th className="p-3 font-medium">Nomor</th><th className="p-3 font-medium">Pemasok</th><th className="p-3 font-medium">Ekspedisi</th>
             <th className="p-3 font-medium">{isFaktur ? 'Jatuh tempo' : 'Estimasi tiba'}</th>
             <th className="p-3 text-right font-medium">Total</th>{isFaktur && <th className="p-3 text-right font-medium">Sisa</th>}
             <th className="p-3 font-medium">Status</th><th className="p-3" />
@@ -131,7 +132,7 @@ export default function DokumenManager({ companyId, jenis, pemasok, rekening, pe
             {visible.map((d) => (
               <tr key={d.id} className="border-b border-line align-top last:border-0">
                 <td className="whitespace-nowrap p-3">{d.nomor}<span className="block text-xs text-ink/50">{tglID(d.tanggal)}{d.no_referensi ? ' · ' + d.no_referensi : ''}</span></td>
-                <td className="p-3">{d.pemasok_nama}</td><td className="whitespace-nowrap p-3">{d.batas_tanggal ? tglID(d.batas_tanggal) : '—'}</td>
+                <td className="p-3">{d.pemasok_nama}</td><td className="p-3">{d.shipping_name || '—'}</td><td className="whitespace-nowrap p-3">{d.batas_tanggal ? tglID(d.batas_tanggal) : '—'}</td>
                 <td className="p-3 text-right tabular-nums">{formatCurrency(Number(d.total), d.currency_code || 'IDR')}</td>
                 {isFaktur && <td className="p-3 text-right tabular-nums">{d.status === 'terbit' ? formatCurrency(Number(d.sisa), d.currency_code || 'IDR') : '—'}</td>}
                 <td className="p-3"><span className="whitespace-nowrap rounded bg-canvas px-2 py-0.5 text-xs font-medium">{statusLabel(d)}</span></td>
@@ -151,7 +152,7 @@ export default function DokumenManager({ companyId, jenis, pemasok, rekening, pe
                 </div></td>
               </tr>
             ))}
-            {!visible.length && <tr><td colSpan={isFaktur ? 7 : 6} className="p-6 text-center text-ink/60">{loading ? 'Memuat…' : 'Belum ada data.'}</td></tr>}
+            {!visible.length && <tr><td colSpan={isFaktur ? 8 : 7} className="p-6 text-center text-ink/60">{loading ? 'Memuat…' : 'Belum ada data.'}</td></tr>}
           </tbody>
         </table>
       </div>
@@ -159,13 +160,14 @@ export default function DokumenManager({ companyId, jenis, pemasok, rekening, pe
   )
 }
 
-function DokumenForm({ sb, companyId, jenis, pemasok, currencies, doc, items: initialItems, onDone, onCancel }: {
-  sb: ReturnType<typeof supabaseBrowser>; companyId: string; jenis: Jenis; pemasok: Pemasok[]; currencies: ActiveCurrency[]
+function DokumenForm({ sb, companyId, jenis, pemasok, currencies, shippingMethods, doc, items: initialItems, onDone, onCancel }: {
+  sb: ReturnType<typeof supabaseBrowser>; companyId: string; jenis: Jenis; pemasok: Pemasok[]; currencies: ActiveCurrency[]; shippingMethods: ShippingMethod[]
   doc: Dokumen | null; items: Item[]; onDone: () => void; onCancel: () => void
 }) {
   const today = isoDate(new Date())
   const [pemasokId, setPemasokId] = useState(doc?.pemasok_id ?? pemasok[0]?.id ?? '')
   const [currencyCode, setCurrencyCode] = useState(doc?.currency_code ?? currencies.find((c) => c.is_default)?.code ?? currencies[0]?.code ?? 'IDR')
+  const [shippingMethodId, setShippingMethodId] = useState(doc?.shipping_method_id ?? '')
   const [paymentTerms, setPaymentTerms] = useState<PaymentTerm[]>([])
   const [paymentTermsId, setPaymentTermsId] = useState(doc?.payment_terms_id ?? '')
   const [tanggal, setTanggal] = useState(doc?.tanggal ?? today)
@@ -218,7 +220,7 @@ function DokumenForm({ sb, companyId, jenis, pemasok, currencies, doc, items: in
     e.preventDefault()
     setBusy(true); setError(null)
     const { error } = await sb.rpc('pb_simpan_dokumen', {
-      p: { id: doc?.id ?? null, company_id: companyId, jenis, pemasok_id: pemasokId, gudang_id: gudangId, no_referensi: ref, currency_code: currencyCode, payment_terms_id: paymentTermsId || null,
+      p: { id: doc?.id ?? null, company_id: companyId, jenis, pemasok_id: pemasokId, gudang_id: gudangId, no_referensi: ref, currency_code: currencyCode, payment_terms_id: paymentTermsId || null, shipping_method_id: shippingMethodId || null,
         tanggal, batas_tanggal: batas || null, ppn_persen: Number(ppn || 0), catatan,
         items: items.map((i) => ({ deskripsi: i.deskripsi, qty: Number(i.qty), harga: Number(i.harga || 0), produk_id: i.produk_id ?? null })) },
     })
@@ -241,6 +243,7 @@ function DokumenForm({ sb, companyId, jenis, pemasok, currencies, doc, items: in
           {pemasok.map((p) => <option key={p.id} value={p.id}>{p.nama}</option>)}
         </select></label>
         <label className="text-sm">Mata uang<select className="input mt-1" value={currencyCode} onChange={(e) => setCurrencyCode(e.target.value)} required>{currencies.map((c) => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}</select></label>
+        <label className="text-sm">Pengiriman / Ekspedisi<select className="input mt-1" value={shippingMethodId} onChange={(e) => setShippingMethodId(e.target.value)}><option value="">Tidak dipilih</option>{shippingMethods.filter((item) => item.active || item.id === shippingMethodId).map((item) => <option key={item.id} value={item.id}>{item.name}{item.active ? '' : ' (nonaktif)'}</option>)}</select></label>
         <label className="text-sm">Syarat Pembayaran<select className="input mt-1" value={paymentTermsId} onChange={(e) => changePaymentTerm(e.target.value)} required disabled={!paymentTerms.length}><option value="">{paymentTerms.length ? 'Pilih syarat pembayaran' : 'Memuat syarat pembayaran…'}</option>{paymentTerms.map((term) => <option key={term.id} value={term.id}>{term.name}{term.is_default ? ' (default)' : ''}</option>)}</select>{selectedPaymentTerm && <span className="mt-1 block text-xs text-ink/55">Jatuh tempo {selectedPaymentTerm.due_days} hari{Number(selectedPaymentTerm.discount_percent) > 0 ? `; diskon ${fmtN(Number(selectedPaymentTerm.discount_percent))}% jika dibayar dalam ${selectedPaymentTerm.discount_days} hari` : ''}</span>}</label>
         <label className="text-sm">Tanggal<input type="date" className="input mt-1" value={tanggal} onChange={(e) => { const value = e.target.value; setTanggal(value); if (jenis === 'faktur' && selectedPaymentTerm) setBatas(addDays(value, selectedPaymentTerm.due_days)) }} required /></label>
         <label className="text-sm">{jenis === 'faktur' ? 'Jatuh tempo' : 'Estimasi tiba'}<input type="date" className="input mt-1" value={batas} onChange={(e) => setBatas(e.target.value)} /></label>
