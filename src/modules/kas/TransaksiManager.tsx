@@ -167,7 +167,7 @@ function TransaksiForm({ sb, companyId, jenis, rekening, kategori, initial, onDo
         <TransactionFavoriteControls
           companyId={companyId}
           favoriteType={jenis === 'masuk' ? 'kas_in' : jenis === 'keluar' ? 'kas_out' : 'kas_transfer'}
-          payload={{ rekening_id: asal, rekening_tujuan_id: tujuan || null, kategori_id: kat || null, jumlah: Number(jumlah || 0), keterangan: ket }}
+          payload={{ rekening_id: asal, rekening_tujuan_id: tujuan || null, kategori_id: kat || null, jumlah: Number(jumlah || 0), currency_code: currencyCode, keterangan: ket }}
           onApply={applyFavorite}
         />
       </div>
