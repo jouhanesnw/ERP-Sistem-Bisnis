@@ -379,9 +379,9 @@ function EventModal({ initial, selectedDay, busy, defaultReminder, onClose, onSa
     if (!startAt) { setFormError('Tanggal dan jam event wajib diisi.'); return }
     if (dueEnabled && dueAt && new Date(dueAt) < new Date(startAt)) { setFormError('Tenggat tidak boleh lebih awal daripada waktu event.'); return }
     if (reminderEnabled && reminderAt && new Date(reminderAt) > new Date(startAt)) { setFormError('Waktu pengingat harus sama atau sebelum waktu event.'); return }
-    if (channels.includes('gmail') && !email.trim()) { setFormError('Isi email penerima untuk pengingat Gmail.'); return }
-    if (channels.includes('whatsapp') && !whatsapp.trim()) { setFormError('Isi nomor WhatsApp penerima. Gunakan kode negara, misalnya +62.'); return }
-    if (channels.includes('telegram') && !telegram.trim()) { setFormError('Isi Telegram Chat ID penerima.'); return }
+    if (reminderEnabled && channels.includes('gmail') && !email.trim()) { setFormError('Isi email penerima untuk pengingat Gmail.'); return }
+    if (reminderEnabled && channels.includes('whatsapp') && !whatsapp.trim()) { setFormError('Isi nomor WhatsApp penerima. Gunakan kode negara, misalnya +62.'); return }
+    if (reminderEnabled && channels.includes('telegram') && !telegram.trim()) { setFormError('Isi Telegram Chat ID penerima.'); return }
     const rawLinks = links.split('\n').map((line) => line.trim()).filter(Boolean)
     const invalidLink = rawLinks.find((value) => {
       try { const url = new URL(value); return url.protocol !== 'https:' && url.protocol !== 'http:' } catch { return true }
@@ -390,7 +390,7 @@ function EventModal({ initial, selectedDay, busy, defaultReminder, onClose, onSa
     const attachment_links = rawLinks.map((url) => ({ url, label: url }))
     onSave({
       title, description, event_type: eventType, start_at: startAt, due_at: dueEnabled ? dueAt : '', reminder_at: reminderEnabled ? reminderAt : '',
-      repeat_rule: repeatRule, attachment_links, reminder_channels: channels,
+      repeat_rule: repeatRule, attachment_links, reminder_channels: reminderEnabled ? channels : [],
       reminder_recipients: { email: email.trim() || undefined, whatsapp: whatsapp.trim() || undefined, telegram_chat_id: telegram.trim() || undefined },
     })
   }
