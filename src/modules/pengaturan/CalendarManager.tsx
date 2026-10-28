@@ -13,8 +13,9 @@ type Member = { userId: string; name: string; role: string }
 type Branch = { id: string; name: string }
 type CalendarRow = {
   id: string; company_id: string; calendar_type: string; name: string; description: string | null
-  access_all: boolean; access_user_ids: string[]; event_edit_all: boolean; event_edit_user_ids: string[]
-  admin_all: boolean; admin_user_ids: string[]; created_by: string; created_at: string
+  access_all: boolean; access_user_ids: string[]; access_branch_ids: string[]
+  event_edit_all: boolean; event_edit_user_ids: string[]; event_edit_branch_ids: string[]
+  admin_all: boolean; admin_user_ids: string[]; admin_branch_ids: string[]; created_by: string; created_at: string
 }
 type CalendarEvent = {
   id: string; company_id: string; calendar_id: string; title: string; description: string | null
@@ -124,8 +125,8 @@ export default function CalendarManager({
     setNotice('Event dihapus.'); router.refresh()
   }
   async function saveCalendar(form: {
-    calendar_type: string; name: string; description: string; access_all: boolean; access_user_ids: string[]
-    event_edit_all: boolean; event_edit_user_ids: string[]; admin_all: boolean; admin_user_ids: string[]
+    calendar_type: string; name: string; description: string; access_all: boolean; access_user_ids: string[]; access_branch_ids: string[]
+    event_edit_all: boolean; event_edit_user_ids: string[]; event_edit_branch_ids: string[]; admin_all: boolean; admin_user_ids: string[]; admin_branch_ids: string[]
   }) {
     setBusy(true); setError(null); setNotice(null)
     const payload = {
@@ -297,6 +298,12 @@ export default function CalendarManager({
   )
 }
 
+function BranchPicker({ branches, selected, onChange, title }: { branches: Branch[]; selected: string[]; onChange: (ids: string[]) => void; title: string }) {
+  const [query, setQuery] = useState('')
+  const rows = branches.filter((branch) => branch.name.toLocaleLowerCase('id').includes(query.trim().toLocaleLowerCase('id')))
+  return <div className="space-y-2"><h3 className="font-semibold">{title}</h3><label className="block text-sm text-ink/60">Grup/Cabang<input className="input mt-1" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cari/Pilih cabang..." /></label>{branches.length ? <div className="flex flex-wrap gap-2">{rows.map((branch) => <label key={branch.id} className="flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm"><input type="checkbox" checked={selected.includes(branch.id)} onChange={(e) => onChange(e.target.checked ? [...selected, branch.id] : selected.filter((id) => id !== branch.id))} />{branch.name}</label>)}</div> : <p className="rounded-lg bg-canvas p-3 text-sm text-ink/55">Belum ada data cabang yang dapat dipilih. Hak per pengguna tetap bisa diatur di bawah.</p>}<p className="text-xs text-ink/50">Hak cabang dikenali melalui data Karyawan aktif yang emailnya sama dengan akun pengguna serta cabang yang dipilih.</p></div>
+}
+
 function EventPill({ item, onClick }: { item: CalendarEvent; onClick: () => void }) {
   return <button onClick={(e) => { e.stopPropagation(); onClick() }} className="block w-full truncate rounded-md border-l-2 border-brand bg-brand-soft px-2 py-1 text-left text-xs text-brand-dark hover:brightness-95"><span className="font-medium">{fmtDate(safeDate(item.start_at), { hour: '2-digit', minute: '2-digit' })}</span> {item.title}</button>
 }
@@ -403,10 +410,13 @@ function CalendarSettingsModal({ initial, members, branches, currentUserId, busy
   const [description, setDescription] = useState(initial?.description ?? '')
   const [accessAll, setAccessAll] = useState(initial?.access_all ?? false)
   const [accessUsers, setAccessUsers] = useState<string[]>(initial?.access_user_ids ?? [currentUserId])
+  const [accessBranches, setAccessBranches] = useState<string[]>(initial?.access_branch_ids ?? [])
   const [editAll, setEditAll] = useState(initial?.event_edit_all ?? false)
   const [editUsers, setEditUsers] = useState<string[]>(initial?.event_edit_user_ids ?? [currentUserId])
+  const [editBranches, setEditBranches] = useState<string[]>(initial?.event_edit_branch_ids ?? [])
   const [adminAll, setAdminAll] = useState(initial?.admin_all ?? false)
   const [adminUsers, setAdminUsers] = useState<string[]>(initial?.admin_user_ids ?? [currentUserId])
+  const [adminBranches, setAdminBranches] = useState<string[]>(initial?.admin_branch_ids ?? [])
   const [searchAccess, setSearchAccess] = useState('')
   const [searchEdit, setSearchEdit] = useState('')
   const [searchAdmin, setSearchAdmin] = useState('')
@@ -422,7 +432,7 @@ function CalendarSettingsModal({ initial, members, branches, currentUserId, busy
   function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!name.trim()) { setFormError('Nama Kalender wajib diisi.'); return }
-    onSave({ calendar_type: calendarType, name: name.trim(), description, access_all: accessAll, access_user_ids: accessUsers, event_edit_all: editAll, event_edit_user_ids: editUsers, admin_all: adminAll, admin_user_ids: adminUsers })
+    onSave({ calendar_type: calendarType, name: name.trim(), description, access_all: accessAll, access_user_ids: accessUsers, access_branch_ids: accessBranches, event_edit_all: editAll, event_edit_user_ids: editUsers, event_edit_branch_ids: editBranches, admin_all: adminAll, admin_user_ids: adminUsers, admin_branch_ids: adminBranches })
   }
   return <div className="fixed inset-0 z-[80] flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-6" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
     <form onSubmit={submit} className="my-auto max-h-[95vh] w-full max-w-5xl overflow-y-auto rounded-xl bg-white shadow-2xl">
@@ -437,9 +447,9 @@ function CalendarSettingsModal({ initial, members, branches, currentUserId, busy
           <div className="rounded-lg bg-canvas p-3 text-sm text-ink/60">Kalender ini menyimpan event di tingkat perusahaan. Atur pengguna yang dapat melihat, menambah/mengubah event, atau mengelola kalender melalui tab hak akses.</div>
           {branches.length > 0 && <details className="rounded-lg border border-line p-3"><summary className="cursor-pointer text-sm font-medium">Referensi Grup/Cabang ({branches.length})</summary><p className="mt-2 text-xs text-ink/55">Cabang tersedia: {branches.map((branch) => branch.name).join(', ')}. Hak saat ini diberikan per pengguna; penentuan akses otomatis berdasarkan keanggotaan cabang memerlukan relasi pengguna-cabang.</p></details>}
         </div>}
-        {tab === 'access' && memberPicker(accessUsers, setAccessUsers, accessAll, setAccessAll, searchAccess, setSearchAccess, 'Hak untuk melihat event-event yang ada pada kalender ini')}
-        {tab === 'event' && memberPicker(editUsers, setEditUsers, editAll, setEditAll, searchEdit, setSearchEdit, 'Hak untuk menambah, mengubah ataupun menghapus event pada kalender')}
-        {tab === 'admin' && memberPicker(adminUsers, setAdminUsers, adminAll, setAdminAll, searchAdmin, setSearchAdmin, 'Hak untuk mengganti nama, deskripsi, parameter lain, dan menghapus kalender')}
+        {tab === 'access' && <div className="space-y-5"><BranchPicker branches={branches} selected={accessBranches} onChange={setAccessBranches} title="Grup/Cabang yang dapat melihat kalender" /><div className="border-t border-line pt-4">{memberPicker(accessUsers, setAccessUsers, accessAll, setAccessAll, searchAccess, setSearchAccess, 'Hak untuk melihat event-event yang ada pada kalender ini')}</div></div>}
+        {tab === 'event' && <div className="space-y-5"><BranchPicker branches={branches} selected={editBranches} onChange={setEditBranches} title="Grup/Cabang yang dapat menambah atau mengubah event" /><div className="border-t border-line pt-4">{memberPicker(editUsers, setEditUsers, editAll, setEditAll, searchEdit, setSearchEdit, 'Hak untuk menambah, mengubah ataupun menghapus event pada kalender')}</div></div>}
+        {tab === 'admin' && <div className="space-y-5"><BranchPicker branches={branches} selected={adminBranches} onChange={setAdminBranches} title="Grup/Cabang dengan hak administrasi" /><div className="border-t border-line pt-4">{memberPicker(adminUsers, setAdminUsers, adminAll, setAdminAll, searchAdmin, setSearchAdmin, 'Hak untuk mengganti nama, deskripsi, parameter lain, dan menghapus kalender')}</div></div>}
       </div>
       <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-2 border-t border-line bg-white p-4"><div>{canDelete && <button type="button" className="btn text-red-600" onClick={onDelete} disabled={busy}><Trash2 size={15} /> Hapus Kalender</button>}</div><div className="flex gap-2"><button type="button" className="btn" onClick={onClose}>Batal</button><button type="submit" className="btn-primary" disabled={busy}>{busy ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />} Simpan</button></div></div>
     </form>
