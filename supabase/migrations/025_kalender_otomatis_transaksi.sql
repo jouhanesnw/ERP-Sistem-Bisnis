@@ -135,7 +135,7 @@ begin
   calendar_id_value := calendar_row.id;
   channels_value := coalesce(calendar_row.default_reminder_channels, '{}'::text[]);
   recipients_value := coalesce(calendar_row.default_reminder_recipients, '{}'::jsonb);
-  start_value := due_date::timestamp at time zone 'Asia/Jakarta';
+  start_value := (due_date::timestamp + interval '9 hours') at time zone 'Asia/Jakarta';
   reminder_value := start_value - make_interval(mins => calendar_row.default_reminder_minutes_before);
   title_value := type_value || ' · ' || doc_number;
 
