@@ -12,7 +12,7 @@ export default async function GajiTunjanganPage() {
   const sb = supabaseServer()
   const [itemsResult, accountsResult] = await Promise.all([
     sb.from('company_salary_items')
-      .select('id, company_id, name, item_type, pay_type, account_id, active, created_at')
+      .select('id, company_id, name, item_type, pay_type, percentage_of_salary, maximum_salary_enabled, account_id, active, created_at')
       .eq('company_id', ctx.active.companyId)
       .order('name'),
     sb.from('ak_akun')
