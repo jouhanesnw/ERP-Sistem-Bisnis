@@ -139,6 +139,13 @@ export default function ActivityLogManager({
   }, [rows, search, actionFilter, moduleFilter, dateFrom, dateTo])
 
   function exportCsv() {
+    void sb.rpc('company_activity_log_ui', {
+      p_company_id: companyId,
+      p_action: 'EXPORT',
+      p_path: '/pengaturan/log-aktivitas',
+    }).then(({ error }) => {
+      if (error) console.warn('Aktivitas ekspor log tidak tersimpan:', error.message)
+    })
     const esc = (value: unknown) => '"' + String(value ?? '').replace(/"/g, '""') + '"'
     const lines = [
       ['Waktu (WIB)', 'Pelaku', 'Email', 'Aksi', 'Modul', 'Tabel', 'Record', 'Ringkasan', 'Field Berubah', 'Detail Perubahan'].map(esc).join(','),
