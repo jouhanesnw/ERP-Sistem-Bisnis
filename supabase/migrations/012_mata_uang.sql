@@ -36,6 +36,8 @@ after insert on public.companies
 for each row execute function public.company_currency_default();
 
 alter table public.company_currencies enable row level security;
+-- SQL privileges are required in addition to the RLS policies below.
+grant select, insert, update, delete on public.company_currencies to authenticated;
 create policy company_currencies_select on public.company_currencies
   for select using (public.is_member(company_id));
 create policy company_currencies_insert on public.company_currencies
