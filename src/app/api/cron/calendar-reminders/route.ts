@@ -8,6 +8,7 @@ type ReminderEvent = {
   company_id: string
   calendar_id: string
   title: string
+  event_type: string
   description: string | null
   start_at: string
   due_at: string | null
@@ -169,6 +170,7 @@ async function createNextOccurrence(sb: ReturnType<typeof createClient>, event: 
     company_id: event.company_id,
     calendar_id: event.calendar_id,
     title: event.title,
+    event_type: event.event_type || 'Kegiatan',
     description: event.description,
     start_at: nextDate(event.start_at, event.repeat_rule),
     due_at: shift(event.due_at),
@@ -201,7 +203,7 @@ export async function GET(request: Request) {
   const sb = createClient(supabaseUrl!, serviceKey!, { auth: { autoRefreshToken: false, persistSession: false } })
   const now = new Date().toISOString()
   const { data, error } = await sb.from('company_calendar_events')
-    .select('id, company_id, calendar_id, title, description, start_at, due_at, reminder_at, repeat_rule, attachment_links, reminder_channels, reminder_recipients, reminder_attempts, created_by, company_calendars(name)')
+    .select('id, company_id, calendar_id, title, event_type, description, start_at, due_at, reminder_at, repeat_rule, attachment_links, reminder_channels, reminder_recipients, reminder_attempts, created_by, company_calendars(name)')
     .eq('reminder_status', 'pending')
     .not('reminder_at', 'is', null)
     .lte('reminder_at', now)
@@ -256,7 +258,7 @@ export async function GET(request: Request) {
   }
 
   const { data: repeatRows, error: repeatReadError } = await sb.from('company_calendar_events')
-    .select('id, company_id, calendar_id, title, description, start_at, due_at, reminder_at, repeat_rule, attachment_links, reminder_channels, reminder_recipients, reminder_attempts, created_by, company_calendars(name)')
+    .select('id, company_id, calendar_id, title, event_type, description, start_at, due_at, reminder_at, repeat_rule, attachment_links, reminder_channels, reminder_recipients, reminder_attempts, created_by, company_calendars(name)')
     .neq('repeat_rule', 'none').is('repeat_processed_at', null).lte('start_at', now)
     .order('start_at', { ascending: true }).limit(50)
   let repeatProcessed = 0
