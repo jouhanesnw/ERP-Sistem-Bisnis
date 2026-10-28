@@ -21,7 +21,7 @@ type CalendarEvent = {
   start_at: string; due_at: string | null; reminder_at: string | null; repeat_rule: string
   attachment_links: { url: string; label?: string }[]; reminder_channels: string[]
   reminder_recipients: { email?: string; whatsapp?: string; telegram_chat_id?: string }
-  reminder_status: string; created_by: string
+  reminder_status: string; reminder_sent_at?: string | null; reminder_last_error?: string | null; reminder_attempts?: number; created_by: string
 }
 const CHANNELS = [
   { id: 'whatsapp', label: 'WhatsApp' },
@@ -58,10 +58,11 @@ function monthStart(date: Date) { return new Date(date.getFullYear(), date.getMo
 function safeDate(value: string) { const d = new Date(value); return Number.isNaN(d.getTime()) ? new Date() : d }
 
 export default function CalendarManager({
-  companyId, currentUserId, initialCalendars, initialEvents, members, branches, initialError,
+  companyId, currentUserId, isCompanyAdmin, initialCalendars, initialEvents, members, branches, initialError,
 }: {
   companyId: string
   currentUserId: string
+  isCompanyAdmin: boolean
   initialCalendars: CalendarRow[]
   initialEvents: CalendarEvent[]
   members: Member[]
@@ -88,7 +89,7 @@ export default function CalendarManager({
   const currentCalendar = calendars.find((item) => item.id === calendarId) ?? calendars[0] ?? null
   const visibleEvents = events.filter((item) => item.calendar_id === currentCalendar?.id)
     .sort((a, b) => safeDate(a.start_at).getTime() - safeDate(b.start_at).getTime())
-  const isAdmin = !!currentCalendar && (currentCalendar.created_by === currentUserId || currentCalendar.admin_all || currentCalendar.admin_user_ids.includes(currentUserId))
+  const isAdmin = isCompanyAdmin || (!!currentCalendar && (currentCalendar.created_by === currentUserId || currentCalendar.admin_all || currentCalendar.admin_user_ids.includes(currentUserId)))
   const canEditEvents = !!currentCalendar && (isAdmin || currentCalendar.event_edit_all || currentCalendar.event_edit_user_ids.includes(currentUserId))
   const selectedEvents = (date: Date) => visibleEvents.filter((event) => sameDay(safeDate(event.start_at), date))
   const title = view === 'year' ? String(cursor.getFullYear())
@@ -169,18 +170,18 @@ export default function CalendarManager({
       repeat_rule: form.repeat_rule, attachment_links: form.attachment_links,
       reminder_channels: form.reminder_channels, reminder_recipients: form.reminder_recipients,
       reminder_status: form.reminder_channels.length && form.reminder_at ? 'pending' : 'not_configured',
-      reminder_sent_at: null, created_by: editingEvent?.created_by ?? currentUserId,
+      reminder_attempts: 0, reminder_last_error: null, reminder_sent_at: null, created_by: editingEvent?.created_by ?? currentUserId,
     }
     const query = editingEvent
       ? await sb.from('company_calendar_events').update(payload).eq('id', editingEvent.id).eq('company_id', companyId)
-        .select('id, company_id, calendar_id, title, description, start_at, due_at, reminder_at, repeat_rule, attachment_links, reminder_channels, reminder_recipients, reminder_status, created_by').single()
+        .select('id, company_id, calendar_id, title, description, start_at, due_at, reminder_at, repeat_rule, attachment_links, reminder_channels, reminder_recipients, reminder_status, reminder_sent_at, reminder_last_error, reminder_attempts, created_by').single()
       : await sb.from('company_calendar_events').insert(payload)
         .select('id, company_id, calendar_id, title, description, start_at, due_at, reminder_at, repeat_rule, attachment_links, reminder_channels, reminder_recipients, reminder_status, created_by').single()
     setBusy(false)
     if (query.error) { setError(query.error.message); return }
     const saved = query.data as CalendarEvent
     setEvents((all) => editingEvent ? all.map((row) => row.id === saved.id ? saved : row) : [...all, saved])
-    setEventOpen(false); setEditingEvent(null); setNotice('Event tersimpan. Pengiriman pengingat memerlukan konfigurasi layanan dan proses terjadwal.')
+    setEventOpen(false); setEditingEvent(null); setNotice(form.reminder_channels.length && form.reminder_at ? 'Event tersimpan. Pengingat akan diproses jika scheduler dan layanan pengiriman sudah dikonfigurasi.' : 'Event tersimpan.')
     router.refresh()
   }
 
@@ -203,7 +204,7 @@ export default function CalendarManager({
             {calendars.length ? calendars.map((row) => <option value={row.id} key={row.id}>{row.name}</option>) : <option value="">Belum ada kalender</option>}
           </select>
           <button className="btn" type="button" onClick={() => { setEditingCalendar(null); setSettingsTab('setup'); setSettingsOpen(true); setError(null) }}><Plus size={16} /> Kalender</button>
-          {currentCalendar && <button className="btn" type="button" onClick={() => { setEditingCalendar(currentCalendar); setSettingsTab('setup'); setSettingsOpen(true); setError(null) }}><Settings2 size={16} /> Pengaturan</button>}
+          {currentCalendar && <button className="btn" type="button" disabled={!isAdmin} title={!isAdmin ? 'Kamu tidak memiliki hak administrasi kalender ini' : undefined} onClick={() => { setEditingCalendar(currentCalendar); setSettingsTab('setup'); setSettingsOpen(true); setError(null) }}><Settings2 size={16} /> Pengaturan</button>}
           <button className="btn-primary" type="button" disabled={!currentCalendar || !canEditEvents} onClick={() => openNewEvent(cursor)}><Plus size={16} /> Tambah Event</button>
         </div>
       </header>
@@ -276,7 +277,7 @@ export default function CalendarManager({
             </div>
             {visibleEvents.length ? <div className="divide-y divide-line">{visibleEvents.map((item) => <article key={item.id} className="flex flex-wrap items-center gap-3 p-3 sm:p-4">
               <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-lg bg-brand-soft text-brand-dark"><span className="text-[10px] uppercase">{fmtDate(safeDate(item.start_at), { month: 'short' })}</span><span className="text-lg font-semibold leading-none">{safeDate(item.start_at).getDate()}</span></div>
-              <div className="min-w-0 flex-1"><p className="font-medium">{item.title}</p><p className="mt-0.5 text-xs text-ink/55">{fmtDate(safeDate(item.start_at), { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })} · {fmtDate(safeDate(item.start_at), { hour: '2-digit', minute: '2-digit' })}</p>{item.description && <p className="mt-1 line-clamp-2 text-sm text-ink/60">{item.description}</p>}<div className="mt-1 flex flex-wrap gap-2 text-xs text-ink/50">{item.due_at && <span>Jatuh tempo: {fmtDate(safeDate(item.due_at), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}{item.reminder_at && <span className="inline-flex items-center gap-1"><Bell size={12} /> Pengingat: {fmtDate(safeDate(item.reminder_at), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}{item.repeat_rule !== 'none' && <span className="inline-flex items-center gap-1"><Repeat2 size={12} /> {REPEAT_OPTIONS.find((x) => x.value === item.repeat_rule)?.label}</span>}</div></div>
+              <div className="min-w-0 flex-1"><p className="font-medium">{item.title}</p><p className="mt-0.5 text-xs text-ink/55">{fmtDate(safeDate(item.start_at), { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })} · {fmtDate(safeDate(item.start_at), { hour: '2-digit', minute: '2-digit' })}</p>{item.description && <p className="mt-1 line-clamp-2 text-sm text-ink/60">{item.description}</p>}<div className="mt-1 flex flex-wrap gap-2 text-xs text-ink/50">{item.due_at && <span>Jatuh tempo: {fmtDate(safeDate(item.due_at), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}{item.reminder_at && <span className="inline-flex items-center gap-1"><Bell size={12} /> Pengingat: {fmtDate(safeDate(item.reminder_at), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}{item.reminder_at && item.reminder_channels?.length > 0 && <span className={`rounded-full px-2 py-0.5 ${item.reminder_status === 'sent' ? 'bg-emerald-50 text-emerald-700' : item.reminder_status === 'failed' ? 'bg-red-50 text-red-700' : item.reminder_status === 'not_configured' ? 'bg-amber-50 text-amber-800' : 'bg-canvas text-ink/60'}`}>{item.reminder_status === 'sent' ? 'Pengingat terkirim' : item.reminder_status === 'failed' ? 'Pengingat gagal' : item.reminder_status === 'not_configured' ? 'Pengingat belum dikonfigurasi' : item.reminder_status === 'sending' ? 'Pengingat sedang dikirim' : 'Pengingat menunggu'}</span>}{item.reminder_last_error && <span className="basis-full text-xs text-red-600">{item.reminder_last_error}</span>}{item.repeat_rule !== 'none' && <span className="inline-flex items-center gap-1"><Repeat2 size={12} /> {REPEAT_OPTIONS.find((x) => x.value === item.repeat_rule)?.label}</span>}</div></div>
               <div className="flex items-center gap-1">{item.attachment_links?.length > 0 && <a className="btn-icon" href={item.attachment_links[0].url} target="_blank" rel="noreferrer" aria-label="Buka lampiran atau link"><Link2 size={16} /></a>}{canEditEvents && <button className="btn-icon" onClick={() => openEditEvent(item)} aria-label="Ubah event"><Pencil size={16} /></button>}{canEditEvents && <button className="btn-icon text-red-600" onClick={() => deleteEvent(item)} aria-label="Hapus event"><Trash2 size={16} /></button>}</div>
             </article>)}</div> : <div className="p-8 text-center text-sm text-ink/55">Belum ada event di kalender ini. Tambahkan kegiatan atau pengingat pertama.</div>}
           </section>
@@ -288,7 +289,7 @@ export default function CalendarManager({
       {settingsOpen && <CalendarSettingsModal
         initial={editingCalendar} members={members} branches={branches} currentUserId={currentUserId}
         busy={busy} tab={settingsTab} setTab={setSettingsTab} onClose={() => { setSettingsOpen(false); setEditingCalendar(null) }} onSave={saveCalendar}
-        canDelete={!!editingCalendar && (editingCalendar.created_by === currentUserId || editingCalendar.admin_all || editingCalendar.admin_user_ids.includes(currentUserId))}
+        canDelete={!!editingCalendar && (isCompanyAdmin || editingCalendar.created_by === currentUserId || editingCalendar.admin_all || editingCalendar.admin_user_ids.includes(currentUserId))}
         onDelete={deleteCalendar}
       />}
       {busy && <div className="fixed bottom-4 right-4 z-[90] flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-sm text-white shadow-lg"><Loader2 size={15} className="animate-spin" /> Menyimpan...</div>}
