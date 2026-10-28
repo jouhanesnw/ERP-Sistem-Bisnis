@@ -7,10 +7,10 @@ export default async function KalenderPage() {
   const sb = supabaseServer()
   const [calendarResult, eventResult, memberResult, branchResult, currentBranchResult] = await Promise.all([
     sb.from('company_calendars')
-      .select('id, company_id, calendar_type, name, description, access_all, access_user_ids, access_branch_ids, event_edit_all, event_edit_user_ids, event_edit_branch_ids, admin_all, admin_user_ids, admin_branch_ids, created_by, created_at')
+      .select('id, company_id, calendar_type, name, description, default_reminder_minutes_before, default_reminder_channels, default_reminder_recipients, access_all, access_user_ids, access_branch_ids, event_edit_all, event_edit_user_ids, event_edit_branch_ids, admin_all, admin_user_ids, admin_branch_ids, created_by, created_at')
       .eq('company_id', ctx.active.companyId).order('name'),
     sb.from('company_calendar_events')
-      .select('id, company_id, calendar_id, title, description, start_at, due_at, reminder_at, repeat_rule, attachment_links, reminder_channels, reminder_recipients, reminder_status, reminder_sent_at, reminder_last_error, reminder_attempts, created_by')
+      .select('id, company_id, calendar_id, title, event_type, description, start_at, due_at, reminder_at, repeat_rule, attachment_links, reminder_channels, reminder_recipients, reminder_status, reminder_sent_at, reminder_last_error, reminder_attempts, repeat_processed_at, source_table, source_id, source_url, created_by')
       .eq('company_id', ctx.active.companyId).order('start_at'),
     sb.from('memberships')
       .select('user_id, role, profiles(full_name)')
