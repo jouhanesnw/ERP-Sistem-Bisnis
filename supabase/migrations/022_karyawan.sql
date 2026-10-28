@@ -1,5 +1,6 @@
 -- MASTER KARYAWAN
--- Prasyarat: migrations 001-021 sudah diterapkan (termasuk cabang dan departemen).
+-- Prasyarat: migrations 001-014 sudah diterapkan (khususnya company_branches dan company_departments).
+-- Migration ini tidak bergantung pada tabel gaji/tunjangan dari migration 020/021.
 
 create table public.company_employees (
   id uuid primary key default gen_random_uuid(),
