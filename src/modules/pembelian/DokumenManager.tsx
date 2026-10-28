@@ -153,7 +153,7 @@ export default function DokumenManager({ companyId, jenis, pemasok, rekening, pe
                 </div></td>
               </tr>
             ))}
-            {!visible.length && <tr><td colSpan={isFaktur ? 8 : 7} className="p-6 text-center text-ink/60">{loading ? 'Memuat…' : 'Belum ada data.'}</td></tr>}
+            {!visible.length && <tr><td colSpan={isFaktur ? 9 : 8} className="p-6 text-center text-ink/60">{loading ? 'Memuat…' : 'Belum ada data.'}</td></tr>}
           </tbody>
         </table>
       </div>
