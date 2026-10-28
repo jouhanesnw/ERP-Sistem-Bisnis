@@ -139,7 +139,7 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
           { label: 'Proses Akhir Bulan', icon: CalendarDays, tone: 'green', disabled: true },
           { label: 'Kontak', href: '/pengaturan/kontak', icon: UserRound, tone: 'purple' },
           { label: 'Transaksi Favorit', href: '/pengaturan/transaksi-favorit', icon: ClipboardCheck, tone: 'purple' },
-          { label: 'Kalender', icon: CalendarDays, tone: 'purple', disabled: true },
+          { label: 'Kalender', href: '/pengaturan/kalender', icon: CalendarDays, tone: 'purple' },
           { label: 'Log Aktivitas', icon: Activity, tone: 'purple', disabled: true },
         ],
       })
