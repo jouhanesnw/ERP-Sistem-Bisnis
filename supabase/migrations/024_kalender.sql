@@ -1,4 +1,6 @@
 -- KALENDER PERUSAHAAN, EVENT, HAK AKSES, DAN PENGINGAT
+-- Prasyarat: tabel perusahaan, memberships, company_branches, serta company_employees dari migrasi sebelumnya.
+
 create table public.company_calendars (
   id uuid primary key default gen_random_uuid(),
   company_id uuid not null references public.companies(id) on delete cascade,
@@ -22,16 +24,23 @@ create table public.company_calendars (
 
 create index company_calendars_company_name_idx on public.company_calendars(company_id, lower(name));
 
--- Branch scope is resolved through an active employee record whose email matches the signed-in account.
-create or replace function public.company_calendar_user_in_branch_ids(p_company_id uuid, p_user_id uuid, p_branch_ids uuid[])
-returns boolean language sql stable security definer set search_path = public as $
+-- A user receives a branch-scoped right when their active employee record uses the
+-- same email address as the signed-in account and belongs to one of the selected branches.
+create or replace function public.company_calendar_user_in_branch_ids(
+  p_company_id uuid, p_user_id uuid, p_branch_ids uuid[]
+) returns boolean
+language sql stable security definer set search_path = public
+as $fn$
   select p_user_id = auth.uid() and exists (
-    select 1 from public.company_employees e
+    select 1
+    from public.company_employees e
     join auth.users u on lower(trim(u.email)) = lower(trim(e.email))
-    where e.company_id = p_company_id and e.active = true
-      and e.branch_id = any(coalesce(p_branch_ids, '{}'::uuid[])) and u.id = p_user_id
+    where e.company_id = p_company_id
+      and e.active = true
+      and e.branch_id = any(coalesce(p_branch_ids, '{}'::uuid[]))
+      and u.id = p_user_id
   );
-$;
+$fn$;
 grant execute on function public.company_calendar_user_in_branch_ids(uuid, uuid, uuid[]) to authenticated;
 
 alter table public.company_calendars enable row level security;
@@ -39,9 +48,13 @@ grant select, insert, update, delete on public.company_calendars to authenticate
 
 create policy company_calendars_select on public.company_calendars for select using (
   public.is_member(company_id) and (
-    public.is_admin(company_id) or created_by = auth.uid() or access_all or auth.uid() = any(access_user_ids)\n    or event_edit_all or auth.uid() = any(event_edit_user_ids) or admin_all or auth.uid() = any(admin_user_ids)
+    public.is_admin(company_id)
+    or created_by = auth.uid()
+    or access_all or auth.uid() = any(access_user_ids)
     or public.company_calendar_user_in_branch_ids(company_id, auth.uid(), access_branch_ids)
+    or event_edit_all or auth.uid() = any(event_edit_user_ids)
     or public.company_calendar_user_in_branch_ids(company_id, auth.uid(), event_edit_branch_ids)
+    or admin_all or auth.uid() = any(admin_user_ids)
     or public.company_calendar_user_in_branch_ids(company_id, auth.uid(), admin_branch_ids)
   )
 );
@@ -50,17 +63,25 @@ create policy company_calendars_insert on public.company_calendars for insert wi
 );
 create policy company_calendars_update on public.company_calendars for update using (
   public.is_member(company_id) and (
-    public.is_admin(company_id) or created_by = auth.uid() or admin_all or auth.uid() = any(admin_user_ids)
+    public.is_admin(company_id)
+    or created_by = auth.uid()
+    or admin_all or auth.uid() = any(admin_user_ids)
     or public.company_calendar_user_in_branch_ids(company_id, auth.uid(), admin_branch_ids)
   )
 ) with check (
   public.is_member(company_id) and (
-    public.is_admin(company_id) or created_by = auth.uid() or admin_all or auth.uid() = any(admin_user_ids)
+    public.is_admin(company_id)
+    or created_by = auth.uid()
+    or admin_all or auth.uid() = any(admin_user_ids)
+    or public.company_calendar_user_in_branch_ids(company_id, auth.uid(), admin_branch_ids)
   )
 );
 create policy company_calendars_delete on public.company_calendars for delete using (
   public.is_member(company_id) and (
-    public.is_admin(company_id) or created_by = auth.uid() or admin_all or auth.uid() = any(admin_user_ids)
+    public.is_admin(company_id)
+    or created_by = auth.uid()
+    or admin_all or auth.uid() = any(admin_user_ids)
+    or public.company_calendar_user_in_branch_ids(company_id, auth.uid(), admin_branch_ids)
   )
 );
 
@@ -92,60 +113,104 @@ create table public.company_calendar_events (
 );
 
 create index company_calendar_events_calendar_start_idx on public.company_calendar_events(calendar_id, start_at);
-create index company_calendar_events_reminder_idx on public.company_calendar_events(reminder_at) where reminder_at is not null and reminder_status = 'pending';
-create index company_calendar_events_repeat_idx on public.company_calendar_events(start_at) where repeat_rule <> 'none' and repeat_processed_at is null;
+create index company_calendar_events_reminder_idx on public.company_calendar_events(reminder_at)
+  where reminder_at is not null and reminder_status = 'pending';
+create index company_calendar_events_repeat_idx on public.company_calendar_events(start_at)
+  where repeat_rule <> 'none' and repeat_processed_at is null;
+
 alter table public.company_calendar_events enable row level security;
 grant select, insert, update, delete on public.company_calendar_events to authenticated;
 
 create policy company_calendar_events_select on public.company_calendar_events for select using (
   public.is_member(company_id) and (
-    public.is_admin(company_id) or created_by = auth.uid() or exists (
+    public.is_admin(company_id)
+    or created_by = auth.uid()
+    or exists (
       select 1 from public.company_calendars c
-      where c.id = calendar_id and c.company_id = company_calendar_events.company_id
-        and (c.access_all or auth.uid() = any(c.access_user_ids) or c.created_by = auth.uid() or c.admin_all or auth.uid() = any(c.admin_user_ids)
+      where c.id = company_calendar_events.calendar_id
+        and c.company_id = company_calendar_events.company_id
+        and (
+          c.access_all or auth.uid() = any(c.access_user_ids)
           or public.company_calendar_user_in_branch_ids(c.company_id, auth.uid(), c.access_branch_ids)
+          or c.event_edit_all or auth.uid() = any(c.event_edit_user_ids)
           or public.company_calendar_user_in_branch_ids(c.company_id, auth.uid(), c.event_edit_branch_ids)
-          or public.company_calendar_user_in_branch_ids(c.company_id, auth.uid(), c.admin_branch_ids))
+          or c.created_by = auth.uid()
+          or c.admin_all or auth.uid() = any(c.admin_user_ids)
+          or public.company_calendar_user_in_branch_ids(c.company_id, auth.uid(), c.admin_branch_ids)
+        )
     )
   )
 );
 create policy company_calendar_events_insert on public.company_calendar_events for insert with check (
-  public.is_member(company_id) and created_by = auth.uid() and exists (
+  public.is_member(company_id)
+  and created_by = auth.uid()
+  and exists (
     select 1 from public.company_calendars c
-    where c.id = calendar_id and c.company_id = company_calendar_events.company_id
-      and (public.is_admin(company_id) or c.created_by = auth.uid() or c.event_edit_all or auth.uid() = any(c.event_edit_user_ids) or c.admin_all or auth.uid() = any(c.admin_user_ids)
+    where c.id = company_calendar_events.calendar_id
+      and c.company_id = company_calendar_events.company_id
+      and (
+        public.is_admin(company_calendar_events.company_id)
+        or c.created_by = auth.uid()
+        or c.event_edit_all or auth.uid() = any(c.event_edit_user_ids)
         or public.company_calendar_user_in_branch_ids(c.company_id, auth.uid(), c.event_edit_branch_ids)
+        or c.admin_all or auth.uid() = any(c.admin_user_ids)
         or public.company_calendar_user_in_branch_ids(c.company_id, auth.uid(), c.admin_branch_ids)
-        or public.company_calendar_user_in_branch_ids(c.company_id, auth.uid(), c.event_edit_branch_ids)
-        or public.company_calendar_user_in_branch_ids(c.company_id, auth.uid(), c.admin_branch_ids))
+      )
   )
 );
 create policy company_calendar_events_update on public.company_calendar_events for update using (
   public.is_member(company_id) and (
-    public.is_admin(company_id) or created_by = auth.uid() or exists (
+    public.is_admin(company_id)
+    or created_by = auth.uid()
+    or exists (
       select 1 from public.company_calendars c
-      where c.id = calendar_id and c.company_id = company_calendar_events.company_id
-        and (c.created_by = auth.uid() or c.event_edit_all or auth.uid() = any(c.event_edit_user_ids) or c.admin_all or auth.uid() = any(c.admin_user_ids))
+      where c.id = company_calendar_events.calendar_id
+        and c.company_id = company_calendar_events.company_id
+        and (
+          c.created_by = auth.uid()
+          or c.event_edit_all or auth.uid() = any(c.event_edit_user_ids)
+          or public.company_calendar_user_in_branch_ids(c.company_id, auth.uid(), c.event_edit_branch_ids)
+          or c.admin_all or auth.uid() = any(c.admin_user_ids)
+          or public.company_calendar_user_in_branch_ids(c.company_id, auth.uid(), c.admin_branch_ids)
+        )
     )
   )
 ) with check (
   public.is_member(company_id) and (
-    public.is_admin(company_id) or created_by = auth.uid() or exists (
+    public.is_admin(company_id)
+    or created_by = auth.uid()
+    or exists (
       select 1 from public.company_calendars c
-      where c.id = calendar_id and c.company_id = company_calendar_events.company_id
-        and (c.created_by = auth.uid() or c.event_edit_all or auth.uid() = any(c.event_edit_user_ids) or c.admin_all or auth.uid() = any(c.admin_user_ids))
+      where c.id = company_calendar_events.calendar_id
+        and c.company_id = company_calendar_events.company_id
+        and (
+          c.created_by = auth.uid()
+          or c.event_edit_all or auth.uid() = any(c.event_edit_user_ids)
+          or public.company_calendar_user_in_branch_ids(c.company_id, auth.uid(), c.event_edit_branch_ids)
+          or c.admin_all or auth.uid() = any(c.admin_user_ids)
+          or public.company_calendar_user_in_branch_ids(c.company_id, auth.uid(), c.admin_branch_ids)
+        )
     )
   )
 );
 create policy company_calendar_events_delete on public.company_calendar_events for delete using (
   public.is_member(company_id) and (
-    public.is_admin(company_id) or created_by = auth.uid() or exists (
+    public.is_admin(company_id)
+    or created_by = auth.uid()
+    or exists (
       select 1 from public.company_calendars c
-      where c.id = calendar_id and c.company_id = company_calendar_events.company_id
-        and (c.created_by = auth.uid() or c.event_edit_all or auth.uid() = any(c.event_edit_user_ids) or c.admin_all or auth.uid() = any(c.admin_user_ids))
+      where c.id = company_calendar_events.calendar_id
+        and c.company_id = company_calendar_events.company_id
+        and (
+          c.created_by = auth.uid()
+          or c.event_edit_all or auth.uid() = any(c.event_edit_user_ids)
+          or public.company_calendar_user_in_branch_ids(c.company_id, auth.uid(), c.event_edit_branch_ids)
+          or c.admin_all or auth.uid() = any(c.admin_user_ids)
+          or public.company_calendar_user_in_branch_ids(c.company_id, auth.uid(), c.admin_branch_ids)
+        )
     )
   )
 );
 
 comment on table public.company_calendar_events is
-'Pengingat hanya dikirim ketika dispatcher terjadwal dan kredensial penyedia pesan telah dikonfigurasi. Data channels/recipients menyimpan target pengiriman; tidak mengirim pesan sendiri.';
+'Pengingat hanya dikirim ketika dispatcher terjadwal dan kredensial penyedia pesan telah dikonfigurasi.';
