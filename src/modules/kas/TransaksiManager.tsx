@@ -6,6 +6,7 @@ import { supabaseBrowser } from '@/lib/supabase/client'
 import { isoDate, monthStart, tglID } from './format'
 import { formatCurrency } from '@/modules/pengaturan/currencies'
 import type { Jenis, KasPerm, Kategori, Rekening, Transaksi } from './types'
+import TransactionFavoriteControls, { type FavoritePayload } from '@/modules/pengaturan/TransactionFavoriteControls'
 
 const TITLE: Record<Jenis, string> = { masuk: 'Kas Masuk', keluar: 'Kas Keluar', transfer: 'Transfer Antar Rekening' }
 const BUCKET = 'kas-bukti'
@@ -126,6 +127,14 @@ function TransaksiForm({ sb, companyId, jenis, rekening, kategori, initial, onDo
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
+  function applyFavorite(payload: FavoritePayload) {
+    if (payload.rekening_id && rekening.some((item) => item.id === payload.rekening_id)) setAsal(payload.rekening_id)
+    if (payload.rekening_tujuan_id && rekening.some((item) => item.id === payload.rekening_tujuan_id && item.id !== payload.rekening_id)) setTujuan(payload.rekening_tujuan_id)
+    if (payload.kategori_id !== undefined) setKat(payload.kategori_id ?? '')
+    if (payload.jumlah !== undefined) setJumlah(String(payload.jumlah))
+    if (payload.keterangan !== undefined) setKet(payload.keterangan ?? '')
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
@@ -154,6 +163,14 @@ function TransaksiForm({ sb, companyId, jenis, rekening, kategori, initial, onDo
 
   return (
     <form onSubmit={submit} className="card grid gap-3 p-4 sm:grid-cols-2">
+      <div className="sm:col-span-2">
+        <TransactionFavoriteControls
+          companyId={companyId}
+          favoriteType={jenis === 'masuk' ? 'kas_in' : jenis === 'keluar' ? 'kas_out' : 'kas_transfer'}
+          payload={{ rekening_id: asal, rekening_tujuan_id: tujuan || null, kategori_id: kat || null, jumlah: Number(jumlah || 0), keterangan: ket }}
+          onApply={applyFavorite}
+        />
+      </div>
       <label className="text-sm">Tanggal<input type="date" className="input mt-1" value={tanggal} onChange={(e) => setTanggal(e.target.value)} required /></label>
       <label className="text-sm">Jumlah ({currencyCode})<input type="number" min="1" step="1" className="input mt-1" value={jumlah} onChange={(e) => setJumlah(e.target.value)} required /></label>
       <label className="text-sm">{jenis === 'transfer' ? 'Dari rekening' : 'Rekening'}
