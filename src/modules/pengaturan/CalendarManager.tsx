@@ -316,7 +316,13 @@ function EventModal({ initial, selectedDay, busy, onClose, onSave }: {
 }) {
   const [title, setTitle] = useState(initial?.title ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
-  const defaultStart = new Date(selectedDay); defaultStart.setHours(9, 0, 0, 0)
+  const defaultStart = new Date(selectedDay)
+  if (sameDay(selectedDay, new Date())) {
+    const now = new Date()
+    defaultStart.setHours(now.getHours() + 1, 0, 0, 0)
+  } else {
+    defaultStart.setHours(9, 0, 0, 0)
+  }
   const [startAt, setStartAt] = useState(initial ? localInput(safeDate(initial.start_at)) : localInput(defaultStart))
   const [dueEnabled, setDueEnabled] = useState(!!initial?.due_at)
   const [dueAt, setDueAt] = useState(initial?.due_at ? localInput(safeDate(initial.due_at)) : '')
@@ -351,7 +357,12 @@ function EventModal({ initial, selectedDay, busy, onClose, onSave }: {
     if (channels.includes('gmail') && !email.trim()) { setFormError('Isi email penerima untuk pengingat Gmail.'); return }
     if (channels.includes('whatsapp') && !whatsapp.trim()) { setFormError('Isi nomor WhatsApp penerima. Gunakan kode negara, misalnya +62.'); return }
     if (channels.includes('telegram') && !telegram.trim()) { setFormError('Isi Telegram Chat ID penerima.'); return }
-    const attachment_links = links.split('\n').map((line) => line.trim()).filter(Boolean).map((url) => ({ url, label: url }))
+    const rawLinks = links.split('\n').map((line) => line.trim()).filter(Boolean)
+    const invalidLink = rawLinks.find((value) => {
+      try { const url = new URL(value); return url.protocol !== 'https:' && url.protocol !== 'http:' } catch { return true }
+    })
+    if (invalidLink) { setFormError('Setiap lampiran harus berupa URL lengkap yang diawali http:// atau https://.'); return }
+    const attachment_links = rawLinks.map((url) => ({ url, label: url }))
     onSave({
       title, description, start_at: startAt, due_at: dueEnabled ? dueAt : '', reminder_at: reminderEnabled ? reminderAt : '',
       repeat_rule: repeatRule, attachment_links, reminder_channels: channels,
