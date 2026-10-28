@@ -163,40 +163,40 @@ begin
   select coalesce(
     jsonb_agg(
       jsonb_build_object(
-        'field', diff.key,
+        'field', diff.field_name,
         'change_type', case
           when before_row is null then 'added'
           when after_row is null then 'removed'
-          when not (before_row ? diff.key) then 'added'
-          when not (after_row ? diff.key) then 'removed'
+          when not (before_row ? diff.field_name) then 'added'
+          when not (after_row ? diff.field_name) then 'removed'
           else 'changed'
         end,
-        'before', before_value,
-        'after', after_value
+        'before', diff.old_value,
+        'after', diff.new_value
       ) || case
-        when jsonb_typeof(before_value) = 'string' and jsonb_typeof(after_value) = 'string'
+        when jsonb_typeof(diff.old_value) = 'string' and jsonb_typeof(diff.new_value) = 'string'
         then jsonb_build_object(
           'text_diff',
-          public.company_activity_text_diff(before_value #>> '{}', after_value #>> '{}')
+          public.company_activity_text_diff(diff.old_value #>> '{}', diff.new_value #>> '{}')
         )
         else '{}'::jsonb
       end
-      order by diff.key
+      order by diff.field_name
     ),
     '[]'::jsonb
   )
   into changes_json
   from (
-    select k.key,
-      before_row->k.key as before_value,
-      after_row->k.key as after_value
+    select k.key as field_name,
+      before_row->k.key as old_value,
+      after_row->k.key as new_value
     from jsonb_object_keys(coalesce(before_row, '{}'::jsonb) || coalesce(after_row, '{}'::jsonb)) as k(key)
     where (before_row->k.key) is distinct from (after_row->k.key)
   ) as diff;
 
-  select coalesce(array_agg(item->>'field' order by item->>'field'), '{}'::text[])
+  select coalesce(array_agg(change_item->>'field' order by change_item->>'field'), '{}'::text[])
     into changed_names
-  from jsonb_array_elements(changes_json) as item;
+  from jsonb_array_elements(changes_json) as change_rows(change_item);
 
   -- Tables without company_id are mapped to the company that owns the changed entity.
   if row_data ? 'company_id' and nullif(row_data->>'company_id','') is not null then
