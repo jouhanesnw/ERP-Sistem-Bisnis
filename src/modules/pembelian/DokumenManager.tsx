@@ -199,7 +199,13 @@ function DokumenForm({ sb, companyId, jenis, pemasok, currencies, doc, items: in
       })
     return () => { current = false }
   }, [sb, companyId, doc?.payment_terms_id, jenis])
-  const selectedPaymentTerm = paymentTerms.find((term) => term.id === paymentTermsId)\n  function changePaymentTerm(id: string) {\n    setPaymentTermsId(id)\n    const term = paymentTerms.find((item) => item.id === id)\n    if (jenis === 'faktur' && term) setBatas(addDays(tanggal, term.due_days))\n  }\n  const subtotal = items.reduce((s, i) => s + Number(i.qty || 0) * Number(i.harga || 0), 0)
+  const selectedPaymentTerm = paymentTerms.find((term) => term.id === paymentTermsId)
+  function changePaymentTerm(id: string) {
+    setPaymentTermsId(id)
+    const term = paymentTerms.find((item) => item.id === id)
+    if (jenis === 'faktur' && term) setBatas(addDays(tanggal, term.due_days))
+  }
+  const subtotal = items.reduce((s, i) => s + Number(i.qty || 0) * Number(i.harga || 0), 0)
   const ppnNilai = Math.round(subtotal * Number(ppn || 0) / 100)
   const setItem = (idx: number, patch: Partial<Item>) => setItems((list) => list.map((x, i) => i === idx ? { ...x, ...patch } : x))
   function pilihProduk(idx: number, id: string) {
@@ -234,7 +240,8 @@ function DokumenForm({ sb, companyId, jenis, pemasok, currencies, doc, items: in
         <label className="text-sm sm:col-span-2">Pemasok<select className="input mt-1" value={pemasokId} onChange={(e) => setPemasokId(e.target.value)} required>
           {pemasok.map((p) => <option key={p.id} value={p.id}>{p.nama}</option>)}
         </select></label>
-        <label className="text-sm">Mata uang<select className="input mt-1" value={currencyCode} onChange={(e) => setCurrencyCode(e.target.value)} required>{currencies.map((c) => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}</select></label>\n        <label className="text-sm">Syarat Pembayaran<select className="input mt-1" value={paymentTermsId} onChange={(e) => changePaymentTerm(e.target.value)} required disabled={!paymentTerms.length}><option value="">{paymentTerms.length ? 'Pilih syarat pembayaran' : 'Memuat syarat pembayaran…'}</option>{paymentTerms.map((term) => <option key={term.id} value={term.id}>{term.name}{term.is_default ? ' (default)' : ''}</option>)}</select>{selectedPaymentTerm && <span className="mt-1 block text-xs text-ink/55">Jatuh tempo {selectedPaymentTerm.due_days} hari{Number(selectedPaymentTerm.discount_percent) > 0 ? `; diskon ${fmtN(Number(selectedPaymentTerm.discount_percent))}% jika dibayar dalam ${selectedPaymentTerm.discount_days} hari` : ''}</span>}</label>
+        <label className="text-sm">Mata uang<select className="input mt-1" value={currencyCode} onChange={(e) => setCurrencyCode(e.target.value)} required>{currencies.map((c) => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}</select></label>
+        <label className="text-sm">Syarat Pembayaran<select className="input mt-1" value={paymentTermsId} onChange={(e) => changePaymentTerm(e.target.value)} required disabled={!paymentTerms.length}><option value="">{paymentTerms.length ? 'Pilih syarat pembayaran' : 'Memuat syarat pembayaran…'}</option>{paymentTerms.map((term) => <option key={term.id} value={term.id}>{term.name}{term.is_default ? ' (default)' : ''}</option>)}</select>{selectedPaymentTerm && <span className="mt-1 block text-xs text-ink/55">Jatuh tempo {selectedPaymentTerm.due_days} hari{Number(selectedPaymentTerm.discount_percent) > 0 ? `; diskon ${fmtN(Number(selectedPaymentTerm.discount_percent))}% jika dibayar dalam ${selectedPaymentTerm.discount_days} hari` : ''}</span>}</label>
         <label className="text-sm">Tanggal<input type="date" className="input mt-1" value={tanggal} onChange={(e) => { const value = e.target.value; setTanggal(value); if (jenis === 'faktur' && selectedPaymentTerm) setBatas(addDays(value, selectedPaymentTerm.due_days)) }} required /></label>
         <label className="text-sm">{jenis === 'faktur' ? 'Jatuh tempo' : 'Estimasi tiba'}<input type="date" className="input mt-1" value={batas} onChange={(e) => setBatas(e.target.value)} /></label>
       </div>
