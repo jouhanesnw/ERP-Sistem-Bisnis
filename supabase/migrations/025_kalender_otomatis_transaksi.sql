@@ -9,7 +9,13 @@ alter table public.company_calendars
     check (jsonb_typeof(default_reminder_recipients) = 'object');
 
 alter table public.company_calendar_events
-  add column event_type text not null default 'Kegiatan'
+  add column if not exists reminder_attempts integer not null default 0 check (reminder_attempts >= 0),
+  add column if not exists reminder_last_error text,
+  add column if not exists repeat_processed_at timestamptz,
+  add column if not exists source_table text,
+  add column if not exists source_id uuid,
+  add column if not exists source_url text,
+  add column if not exists event_type text not null default 'Kegiatan'
     check (event_type in (
       'Kegiatan',
       'Jadwal Pembayaran Gaji',
@@ -33,6 +39,12 @@ alter table public.company_calendar_events
   add column source_table text,
   add column source_id uuid,
   add column source_url text;
+
+alter table public.company_calendar_events
+  drop constraint if exists company_calendar_events_reminder_status_check;
+alter table public.company_calendar_events
+  add constraint company_calendar_events_reminder_status_check
+  check (reminder_status in ('pending','sending','sent','failed','not_configured'));
 
 create unique index company_calendar_events_source_uq
   on public.company_calendar_events(company_id, source_table, source_id, event_type)
@@ -228,7 +240,8 @@ begin
       update public.pb_dokumen set catatan = catatan where id = doc_id and company_id = cid;
     end if;
   end if;
-  return coalesce(new, old);
+  if TG_OP = 'DELETE' then return old; end if;
+  return new;
 end
 $fn$;
 
