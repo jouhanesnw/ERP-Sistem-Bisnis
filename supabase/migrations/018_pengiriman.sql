@@ -148,7 +148,10 @@ begin
   if not exists(select 1 from public.company_currencies where company_id=cid and code=cur and is_active) then raise exception 'Mata uang belum disimpan atau tidak aktif'; end if;
   if ptid is null then select id into ptid from public.company_payment_terms where company_id=cid and is_default and active; end if;
   if not exists(select 1 from public.company_payment_terms where id=ptid and company_id=cid and active) then raise exception 'Syarat pembayaran belum dipilih, tidak aktif, atau berasal dari perusahaan lain'; end if;
-  if smid is not null and not exists(select 1 from public.company_shipping_methods where id=smid and company_id=cid and active) then raise exception 'Pengiriman/ekspedisi tidak aktif atau berasal dari perusahaan lain'; end if;
+  if smid is not null and not exists (
+    select 1 from public.company_shipping_methods sm where sm.id=smid and sm.company_id=cid
+      and (sm.active or (did is not null and exists(select 1 from public.pb_dokumen old where old.id=did and old.company_id=cid and old.shipping_method_id=smid)))
+  ) then raise exception 'Pengiriman/ekspedisi tidak aktif atau berasal dari perusahaan lain'; end if;
   select coalesce(nullif(p->>'gudang_id','')::uuid,(select g.id from public.pd_gudang g where g.company_id=cid and g.is_default)) into gid;
   if not exists(select 1 from public.pd_gudang where id=gid and company_id=cid and aktif) then raise exception 'Gudang tidak valid'; end if;
   if did is null then
@@ -194,7 +197,10 @@ begin
   if not exists(select 1 from public.company_currencies where company_id=cid and code=cur and is_active) then raise exception 'Mata uang belum disimpan atau tidak aktif'; end if;
   if ptid is null then select id into ptid from public.company_payment_terms where company_id=cid and is_default and active; end if;
   if not exists(select 1 from public.company_payment_terms where id=ptid and company_id=cid and active) then raise exception 'Syarat pembayaran belum dipilih, tidak aktif, atau berasal dari perusahaan lain'; end if;
-  if smid is not null and not exists(select 1 from public.company_shipping_methods where id=smid and company_id=cid and active) then raise exception 'Pengiriman/ekspedisi tidak aktif atau berasal dari perusahaan lain'; end if;
+  if smid is not null and not exists (
+    select 1 from public.company_shipping_methods sm where sm.id=smid and sm.company_id=cid
+      and (sm.active or (did is not null and exists(select 1 from public.pj_dokumen old where old.id=did and old.company_id=cid and old.shipping_method_id=smid)))
+  ) then raise exception 'Pengiriman/ekspedisi tidak aktif atau berasal dari perusahaan lain'; end if;
   select coalesce(nullif(p->>'gudang_id','')::uuid,(select g.id from public.pd_gudang g where g.company_id=cid and g.is_default)) into gid;
   if not exists(select 1 from public.pd_gudang where id=gid and company_id=cid and aktif) then raise exception 'Gudang tidak valid'; end if;
   if did is null then
