@@ -59,10 +59,11 @@ function monthStart(date: Date) { return new Date(date.getFullYear(), date.getMo
 function safeDate(value: string) { const d = new Date(value); return Number.isNaN(d.getTime()) ? new Date() : d }
 
 export default function CalendarManager({
-  companyId, currentUserId, isCompanyAdmin, initialCalendars, initialEvents, members, branches, initialError,
+  companyId, currentUserId, currentUserBranchIds, isCompanyAdmin, initialCalendars, initialEvents, members, branches, initialError,
 }: {
   companyId: string
   currentUserId: string
+  currentUserBranchIds: string[]
   isCompanyAdmin: boolean
   initialCalendars: CalendarRow[]
   initialEvents: CalendarEvent[]
@@ -90,8 +91,8 @@ export default function CalendarManager({
   const currentCalendar = calendars.find((item) => item.id === calendarId) ?? calendars[0] ?? null
   const visibleEvents = events.filter((item) => item.calendar_id === currentCalendar?.id)
     .sort((a, b) => safeDate(a.start_at).getTime() - safeDate(b.start_at).getTime())
-  const isAdmin = isCompanyAdmin || (!!currentCalendar && (currentCalendar.created_by === currentUserId || currentCalendar.admin_all || currentCalendar.admin_user_ids.includes(currentUserId)))
-  const canEditEvents = !!currentCalendar && (isAdmin || currentCalendar.event_edit_all || currentCalendar.event_edit_user_ids.includes(currentUserId))
+  const isAdmin = isCompanyAdmin || (!!currentCalendar && (currentCalendar.created_by === currentUserId || currentCalendar.admin_all || currentCalendar.admin_user_ids.includes(currentUserId) || currentCalendar.admin_branch_ids.some((id) => currentUserBranchIds.includes(id))))
+  const canEditEvents = !!currentCalendar && (isAdmin || currentCalendar.event_edit_all || currentCalendar.event_edit_user_ids.includes(currentUserId) || currentCalendar.event_edit_branch_ids.some((id) => currentUserBranchIds.includes(id)))
   const selectedEvents = (date: Date) => visibleEvents.filter((event) => sameDay(safeDate(event.start_at), date))
   const title = view === 'year' ? String(cursor.getFullYear())
     : view === 'month' ? fmtDate(cursor, { month: 'long', year: 'numeric' })
@@ -135,9 +136,9 @@ export default function CalendarManager({
     }
     const query = editingCalendar
       ? await sb.from('company_calendars').update(payload).eq('id', editingCalendar.id).eq('company_id', companyId)
-        .select('id, company_id, calendar_type, name, description, access_all, access_user_ids, event_edit_all, event_edit_user_ids, admin_all, admin_user_ids, created_by, created_at').single()
+        .select('id, company_id, calendar_type, name, description, access_all, access_user_ids, access_branch_ids, event_edit_all, event_edit_user_ids, event_edit_branch_ids, admin_all, admin_user_ids, admin_branch_ids, created_by, created_at').single()
       : await sb.from('company_calendars').insert(payload)
-        .select('id, company_id, calendar_type, name, description, access_all, access_user_ids, event_edit_all, event_edit_user_ids, admin_all, admin_user_ids, created_by, created_at').single()
+        .select('id, company_id, calendar_type, name, description, access_all, access_user_ids, access_branch_ids, event_edit_all, event_edit_user_ids, event_edit_branch_ids, admin_all, admin_user_ids, admin_branch_ids, created_by, created_at').single()
     setBusy(false)
     if (query.error) { setError(query.error.message); return }
     const row = query.data as CalendarRow
@@ -290,7 +291,7 @@ export default function CalendarManager({
       {settingsOpen && <CalendarSettingsModal
         initial={editingCalendar} members={members} branches={branches} currentUserId={currentUserId}
         busy={busy} tab={settingsTab} setTab={setSettingsTab} onClose={() => { setSettingsOpen(false); setEditingCalendar(null) }} onSave={saveCalendar}
-        canDelete={!!editingCalendar && (isCompanyAdmin || editingCalendar.created_by === currentUserId || editingCalendar.admin_all || editingCalendar.admin_user_ids.includes(currentUserId))}
+        canDelete={!!editingCalendar && (isCompanyAdmin || editingCalendar.created_by === currentUserId || editingCalendar.admin_all || editingCalendar.admin_user_ids.includes(currentUserId) || editingCalendar.admin_branch_ids.some((id) => currentUserBranchIds.includes(id)))}
         onDelete={deleteCalendar}
       />}
       {busy && <div className="fixed bottom-4 right-4 z-[90] flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-sm text-white shadow-lg"><Loader2 size={15} className="animate-spin" /> Menyimpan...</div>}
