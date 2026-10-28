@@ -6,7 +6,19 @@ import { Check, ChevronDown, Pencil, Plus, Search, Trash2, X } from 'lucide-reac
 import { supabaseBrowser } from '@/lib/supabase/client'
 
 type Account = { id: string; kode: string; nama: string; tipe: string; aktif: boolean }
-type TaxType = 'penjualan' | 'pembelian' | 'keduanya'
+const TAX_TYPES = [
+  { value: 'ppn', label: 'Pajak Pertambahan Nilai' },
+  { value: 'ppnbm', label: 'Pajak Pertambahan Barang Mewah' },
+  { value: 'pph_4_2', label: 'Pajak Penghasilan Ps.4(2)' },
+  { value: 'pph_15', label: 'Pajak Penghasilan Ps.15' },
+  { value: 'pph_21', label: 'Pajak Penghasilan Ps.21' },
+  { value: 'pph_22', label: 'Pajak Penghasilan Ps.22' },
+  { value: 'pph_23', label: 'Pajak Penghasilan Ps.23' },
+] as const
+
+type NewTaxType = (typeof TAX_TYPES)[number]['value']
+type LegacyTaxType = 'penjualan' | 'pembelian' | 'keduanya'
+type TaxType = NewTaxType | LegacyTaxType
 type Tax = {
   id: string
   company_id: string
@@ -20,9 +32,16 @@ type Tax = {
   created_at?: string
 }
 const TYPE_LABEL: Record<TaxType, string> = {
-  penjualan: 'Pajak penjualan',
-  pembelian: 'Pajak pembelian',
-  keduanya: 'Penjualan & pembelian',
+  ppn: 'Pajak Pertambahan Nilai',
+  ppnbm: 'Pajak Pertambahan Barang Mewah',
+  pph_4_2: 'Pajak Penghasilan Ps.4(2)',
+  pph_15: 'Pajak Penghasilan Ps.15',
+  pph_21: 'Pajak Penghasilan Ps.21',
+  pph_22: 'Pajak Penghasilan Ps.22',
+  pph_23: 'Pajak Penghasilan Ps.23',
+  penjualan: 'Pajak penjualan (tipe lama)',
+  pembelian: 'Pajak pembelian (tipe lama)',
+  keduanya: 'Penjualan & pembelian (tipe lama)',
 }
 function formatRate(value: number | string) {
   return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 4 }).format(Number(value))
@@ -150,7 +169,7 @@ function TaxForm({ companyId, tax, accounts, onCancel, onSaved }: {
 }) {
   const sb = useMemo(() => supabaseBrowser(), [])
   const [name, setName] = useState(tax?.name ?? '')
-  const [taxType, setTaxType] = useState<TaxType>(tax?.tax_type ?? 'penjualan')
+  const [taxType, setTaxType] = useState<TaxType | ''>(tax?.tax_type ?? '')
   const [rate, setRate] = useState(String(tax?.rate ?? '0'))
   const [description, setDescription] = useState(tax?.description ?? '')
   const [salesAccountId, setSalesAccountId] = useState(tax?.sales_account_id ?? '')
@@ -159,13 +178,22 @@ function TaxForm({ companyId, tax, accounts, onCancel, onSaved }: {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const needsSales = taxType === 'penjualan' || taxType === 'keduanya'
-  const needsPurchase = taxType === 'pembelian' || taxType === 'keduanya'
+  const legacyTaxType = tax && ['penjualan', 'pembelian', 'keduanya'].includes(tax.tax_type)
+    ? tax.tax_type as LegacyTaxType
+    : null
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
-    setBusy(true)
     setError(null)
+    if (!taxType) {
+      setError('Pilih tipe pajak terlebih dahulu.')
+      return
+    }
+    if (!salesAccountId && !purchaseAccountId) {
+      setError('Pilih setidaknya satu akun COA untuk pencatatan pajak.')
+      return
+    }
+    setBusy(true)
     const payload = {
       id: tax?.id ?? null,
       company_id: companyId,
@@ -187,7 +215,7 @@ function TaxForm({ companyId, tax, accounts, onCancel, onSaved }: {
       id: data as string,
       company_id: companyId,
       name: name.trim(),
-      tax_type: taxType,
+      tax_type: taxType as TaxType,
       rate: Number(rate),
       description: description.trim() || null,
       sales_account_id: salesAccountId || null,
@@ -216,10 +244,10 @@ function TaxForm({ companyId, tax, accounts, onCancel, onSaved }: {
                 <input className="input mt-1" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} autoFocus required placeholder="Contoh: PPN 11%" />
               </label>
               <label className="text-sm font-medium">Tipe Pajak <span className="text-red-600">*</span>
-                <select className="input mt-1" value={taxType} onChange={(e) => setTaxType(e.target.value as TaxType)} required>
-                  <option value="penjualan">Pajak penjualan</option>
-                  <option value="pembelian">Pajak pembelian</option>
-                  <option value="keduanya">Pajak penjualan dan pembelian</option>
+                <select className="input mt-1" value={taxType} onChange={(e) => setTaxType(e.target.value as TaxType | '')} required>
+                  <option value="">- Pilih Tipe Pajak -</option>
+                  {TAX_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
+                  {legacyTaxType && <option value={legacyTaxType}>{TYPE_LABEL[legacyTaxType]}</option>}
                 </select>
               </label>
               <label className="text-sm font-medium">Tarif Pajak (%) <span className="text-red-600">*</span>
@@ -235,18 +263,18 @@ function TaxForm({ companyId, tax, accounts, onCancel, onSaved }: {
               accounts={accounts}
               value={salesAccountId}
               onChange={setSalesAccountId}
-              required={needsSales}
+              required={false}
               placeholder="Cari kode atau nama akun COA…"
-              hint={needsSales ? 'Wajib untuk tipe pajak penjualan.' : 'Opsional untuk tipe pajak pembelian.'}
+              hint="Pilih akun COA yang digunakan untuk mencatat pajak penjualan ini."
             />
             <SearchableAccountSelect
               label="Akun Pajak Pembelian"
               accounts={accounts}
               value={purchaseAccountId}
               onChange={setPurchaseAccountId}
-              required={needsPurchase}
+              required={false}
               placeholder="Cari kode atau nama akun COA…"
-              hint={needsPurchase ? 'Wajib untuk tipe pajak pembelian.' : 'Opsional untuk tipe pajak penjualan.'}
+              hint="Pilih akun COA yang digunakan untuk mencatat pajak pembelian ini."
             />
 
             <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4 accent-brand" checked={active} onChange={(e) => setActive(e.target.checked)} /> Pajak aktif</label>
