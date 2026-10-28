@@ -4,6 +4,7 @@ import { supabaseServer } from '@/lib/supabase/server'
 import type { Pemasok, PbPerm, RekeningPilihan } from './types'
 import type { ActiveCurrency } from '@/modules/pengaturan/currencies'
 import type { ShippingMethod } from '@/modules/pengaturan/shipping'
+import type { ShippingTerm } from '@/modules/pengaturan/shippingTerms'
 
 export async function getPbContext(): Promise<{ companyId: string; perm: PbPerm } | null> {
   const ctx = await getAppContext()
@@ -16,16 +17,18 @@ export async function getPbContext(): Promise<{ companyId: string; perm: PbPerm 
 
 export async function loadPbBase(companyId: string) {
   const sb = supabaseServer()
-  const [p, r, c, s] = await Promise.all([
+  const [p, r, c, s, st] = await Promise.all([
     sb.from('pb_pemasok').select('*').eq('company_id', companyId).order('nama'),
     sb.rpc('pb_rekening_pilihan', { cid: companyId }),
     sb.from('company_currencies').select('code, name, symbol, is_default').eq('company_id', companyId).eq('is_active', true).order('code'),
     sb.from('company_shipping_methods').select('id, company_id, name, pic, phone, address, city, province, postal_code, country, active, created_at').eq('company_id', companyId).order('name'),
+    sb.from('company_shipping_terms').select('id, company_id, name, description, active, created_at').eq('company_id', companyId).order('name'),
   ])
   return {
     pemasok: (p.data ?? []) as Pemasok[],
     rekening: (r.data ?? []) as RekeningPilihan[],
     currencies: (c.data ?? []) as ActiveCurrency[],
     shippingMethods: (s.data ?? []) as ShippingMethod[],
+    shippingTerms: (st.data ?? []) as ShippingTerm[],
   }
 }
