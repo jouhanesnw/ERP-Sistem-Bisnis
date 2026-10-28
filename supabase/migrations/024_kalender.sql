@@ -23,7 +23,7 @@ grant select, insert, update, delete on public.company_calendars to authenticate
 
 create policy company_calendars_select on public.company_calendars for select using (
   public.is_member(company_id) and (
-    public.is_admin(company_id) or created_by = auth.uid() or access_all or auth.uid() = any(access_user_ids)
+    public.is_admin(company_id) or created_by = auth.uid() or access_all or auth.uid() = any(access_user_ids)\n    or event_edit_all or auth.uid() = any(event_edit_user_ids) or admin_all or auth.uid() = any(admin_user_ids)
   )
 );
 create policy company_calendars_insert on public.company_calendars for insert with check (
