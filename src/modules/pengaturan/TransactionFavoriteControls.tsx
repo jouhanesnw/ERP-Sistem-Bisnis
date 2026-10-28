@@ -63,9 +63,10 @@ export default function TransactionFavoriteControls({ companyId, favoriteType, p
   const [selected, setSelected] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
 
   async function openLoad() {
-    setMode('load'); setBusy(true); setError(null); setSelected('')
+    setMode('load'); setBusy(true); setError(null); setNotice(null); setSelected('')
     const { data, error } = await sb.from('company_transaction_favorites')
       .select('id, company_id, favorite_type, name, visibility, payload, created_by, created_at')
       .eq('company_id', companyId).eq('favorite_type', favoriteType).order('name')
@@ -76,7 +77,7 @@ export default function TransactionFavoriteControls({ companyId, favoriteType, p
 
   async function save() {
     if (!name.trim()) { setError('Nama favorit wajib diisi.'); return }
-    setBusy(true); setError(null)
+    setBusy(true); setError(null); setNotice(null)
     const { data: { user }, error: userError } = await sb.auth.getUser()
     if (userError || !user) { setBusy(false); setError('Sesi login tidak ditemukan. Silakan login ulang.'); return }
     const { error: saveError } = await sb.rpc('company_transaction_favorite_save', {
@@ -92,6 +93,7 @@ export default function TransactionFavoriteControls({ companyId, favoriteType, p
     if (saveError) { setError(saveError.code === '23505' ? 'Nama favorit sudah digunakan.' : saveError.message); return }
     setMode(null)
     setName('')
+    setNotice('Transaksi favorit berhasil disimpan.')
   }
 
   function apply() {
@@ -105,7 +107,8 @@ export default function TransactionFavoriteControls({ companyId, favoriteType, p
     <>
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" className="btn" onClick={openLoad}><Download size={15} /> Ambil Favorit</button>
-        <button type="button" className="btn" onClick={() => { setName(''); setVisibility('all_members'); setError(null); setMode('save') }}><Save size={15} /> Simpan sebagai Favorit</button>
+        <button type="button" className="btn" onClick={() => { setName(''); setVisibility('all_members'); setError(null); setNotice(null); setMode('save') }}><Save size={15} /> Simpan sebagai Favorit</button>
+        {notice && <p role="status" className="text-sm text-green-700">{notice}</p>}
       </div>
       {mode && <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/45 p-3 sm:p-5" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) setMode(null) }}>
         <section role="dialog" aria-modal="true" aria-labelledby="favorite-dialog-title" style={{ width: 'min(560px, calc(100vw - 24px))', maxWidth: 'calc(100vw - 24px)', maxHeight: '88vh', backgroundColor: '#ffffff' }} className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-line shadow-2xl">
@@ -139,8 +142,8 @@ export default function TransactionFavoriteControls({ companyId, favoriteType, p
               </label>}
               {selected && (() => {
                 const chosen = rows.find((row) => row.id === selected)
-                const itemCount = chosen?.payload.items?.length ?? 0
-                return chosen ? <div className="rounded-lg border border-line p-3 text-sm"><p className="font-medium">{chosen.name}</p><p className="mt-1 text-ink/60">{itemCount} baris item · {chosen.payload.currency_code ?? 'IDR'}</p></div> : null
+                const itemCount = chosen?.payload.items?.length ?? chosen?.payload.journal_lines?.length ?? 0
+                return chosen ? <div className="rounded-lg border border-line p-3 text-sm"><p className="font-medium">{chosen.name}</p><p className="mt-1 text-ink/60">{itemCount} baris detail{chosen.payload.currency_code ? ` · ${chosen.payload.currency_code}` : ''}{chosen.payload.jumlah !== undefined ? ` · Nominal ${new Intl.NumberFormat('id-ID').format(Number(chosen.payload.jumlah))}` : ''}</p></div> : null
               })()}
             </>}
             {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
