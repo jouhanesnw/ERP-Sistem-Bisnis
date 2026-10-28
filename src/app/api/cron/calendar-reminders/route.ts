@@ -163,7 +163,7 @@ function nextDate(value: string, repeatRule: ReminderEvent['repeat_rule']) {
   }
   return date.toISOString()
 }
-async function createNextOccurrence(sb: ReturnType<typeof createClient>, event: ReminderEvent) {
+async function createNextOccurrence(sb: any, event: ReminderEvent) {
   if (event.repeat_rule === 'none') return
   const shift = (value: string | null) => value ? nextDate(value, event.repeat_rule) : null
   // This server route uses the live Supabase schema, which is not represented in generated client types yet.
