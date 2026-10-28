@@ -12,7 +12,7 @@ export const SALARY_ITEM_TYPES = [
   'Potongan Gaji (Tidak Mengurangi PPh)',
   'Pengurangan Gaji (Mengurangi PPh)',
   'Premi asuransi kesehatan dibayarkan pekerja',
-  'Iuran pensiunan THT/JHT dibayarkan pekerja',
+  'Iuran Pensiun/THT/JHT dibayarkan Pekerja',
 ] as const
 
 export type SalaryItemType = typeof SALARY_ITEM_TYPES[number]
@@ -30,7 +30,7 @@ export const PERCENTAGE_SALARY_TYPES: readonly SalaryItemType[] = [
   'Premi asuransi kesehatan yang dibayarkan pemberi kerja',
   'Tunjangan Iuran Pensiun/THT/JHT dibayarkan Pemberi Kerja',
   'Premi asuransi kesehatan dibayarkan pekerja',
-  'Iuran pensiunan THT/JHT dibayarkan pekerja',
+  'Iuran Pensiun/THT/JHT dibayarkan Pekerja',
 ]
 export const EXPENSE_ACCOUNT_TYPES: readonly SalaryItemType[] = [
   'Tunjangan Jaminan Kecelakaan Kerja, Jaminan Kematian',
@@ -41,7 +41,7 @@ export const EXPENSE_ACCOUNT_TYPES: readonly SalaryItemType[] = [
   'Pengurangan Gaji (Mengurangi PPh)',
 ]
 export const MAXIMUM_SALARY_TYPES: readonly SalaryItemType[] = [
-  'Iuran pensiunan THT/JHT dibayarkan pekerja',
+  'Iuran Pensiun/THT/JHT dibayarkan Pekerja',
 ]
 
 export function getSalaryPayOptions(type: SalaryItemType): SalaryPayType[] {
