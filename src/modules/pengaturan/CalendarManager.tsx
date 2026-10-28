@@ -170,7 +170,7 @@ export default function CalendarManager({
       repeat_rule: form.repeat_rule, attachment_links: form.attachment_links,
       reminder_channels: form.reminder_channels, reminder_recipients: form.reminder_recipients,
       reminder_status: form.reminder_channels.length && form.reminder_at ? 'pending' : 'not_configured',
-      reminder_attempts: 0, reminder_last_error: null, reminder_sent_at: null, created_by: editingEvent?.created_by ?? currentUserId,
+      reminder_attempts: 0, reminder_last_error: null, reminder_sent_at: null, repeat_processed_at: null, created_by: editingEvent?.created_by ?? currentUserId,
     }
     const query = editingEvent
       ? await sb.from('company_calendar_events').update(payload).eq('id', editingEvent.id).eq('company_id', companyId)
@@ -401,9 +401,9 @@ function CalendarSettingsModal({ initial, members, branches, currentUserId, busy
   const [calendarType, setCalendarType] = useState(initial?.calendar_type ?? 'Kegiatan')
   const [name, setName] = useState(initial?.name ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
-  const [accessAll, setAccessAll] = useState(initial?.access_all ?? true)
+  const [accessAll, setAccessAll] = useState(initial?.access_all ?? false)
   const [accessUsers, setAccessUsers] = useState<string[]>(initial?.access_user_ids ?? [currentUserId])
-  const [editAll, setEditAll] = useState(initial?.event_edit_all ?? true)
+  const [editAll, setEditAll] = useState(initial?.event_edit_all ?? false)
   const [editUsers, setEditUsers] = useState<string[]>(initial?.event_edit_user_ids ?? [currentUserId])
   const [adminAll, setAdminAll] = useState(initial?.admin_all ?? false)
   const [adminUsers, setAdminUsers] = useState<string[]>(initial?.admin_user_ids ?? [currentUserId])
