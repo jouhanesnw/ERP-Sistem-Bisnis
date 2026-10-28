@@ -166,7 +166,9 @@ function nextDate(value: string, repeatRule: ReminderEvent['repeat_rule']) {
 async function createNextOccurrence(sb: ReturnType<typeof createClient>, event: ReminderEvent) {
   if (event.repeat_rule === 'none') return
   const shift = (value: string | null) => value ? nextDate(value, event.repeat_rule) : null
-  const { error } = await sb.from('company_calendar_events').insert({
+  // This server route uses the live Supabase schema, which is not represented in generated client types yet.
+  // Cast this single write to an untyped client so TypeScript does not infer the row as never[].
+  const { error } = await (sb as any).from('company_calendar_events').insert({
     company_id: event.company_id,
     calendar_id: event.calendar_id,
     title: event.title,
