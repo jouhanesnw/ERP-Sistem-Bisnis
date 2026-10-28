@@ -6,6 +6,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { addDays, isoDate, tglID } from '@/lib/format'
 import { formatCurrency, type ActiveCurrency } from '@/modules/pengaturan/currencies'
+import type { PaymentTerm } from '@/modules/pengaturan/paymentTerms'
 import type { Dokumen, Item, Jenis, Pemasok, PbPerm, RekeningPilihan } from './types'
 
 const LABEL: Record<string, string> = { draft: 'Draft', dipesan: 'Dipesan', diterima: 'Diterima', terbit: 'Terbit', batal: 'Batal' }
@@ -165,6 +166,8 @@ function DokumenForm({ sb, companyId, jenis, pemasok, currencies, doc, items: in
   const today = isoDate(new Date())
   const [pemasokId, setPemasokId] = useState(doc?.pemasok_id ?? pemasok[0]?.id ?? '')
   const [currencyCode, setCurrencyCode] = useState(doc?.currency_code ?? currencies.find((c) => c.is_default)?.code ?? currencies[0]?.code ?? 'IDR')
+  const [paymentTerms, setPaymentTerms] = useState<PaymentTerm[]>([])
+  const [paymentTermsId, setPaymentTermsId] = useState(doc?.payment_terms_id ?? '')
   const [tanggal, setTanggal] = useState(doc?.tanggal ?? today)
   const [ref, setRef] = useState(doc?.no_referensi ?? '')
   const [batas, setBatas] = useState(doc ? doc.batas_tanggal ?? '' : addDays(today, 14))
@@ -178,7 +181,25 @@ function DokumenForm({ sb, companyId, jenis, pemasok, currencies, doc, items: in
   const [busy, setBusy] = useState(false)
   useEffect(() => { sb.rpc('gd_pilihan', { cid: companyId, modul: MODUL }).then(({ data, error }) => { if (error) return setError(error.message); const list = (data ?? []) as GudangPilihan[]; setGudang(list); setGudangId((old) => old || doc?.gudang_id || list.find((g) => g.is_default)?.id || list[0]?.id || '') }) }, [sb, companyId, doc?.gudang_id])
   useEffect(() => { if (!gudangId) { setProduk([]); return } sb.rpc('pd_pilihan_gudang', { cid: companyId, modul: MODUL, gid: gudangId }).then(({ data, error }) => { if (error) return setError(error.message); setProduk((data ?? []) as ProdukPilihan[]) }) }, [sb, companyId, gudangId])
-  const subtotal = items.reduce((s, i) => s + Number(i.qty || 0) * Number(i.harga || 0), 0)
+  useEffect(() => {
+    let current = true
+    sb.from('company_payment_terms')
+      .select('id, company_id, name, discount_days, discount_percent, due_days, description, is_default, active, created_at')
+      .eq('company_id', companyId).eq('active', true)
+      .order('is_default', { ascending: false }).order('name')
+      .then(({ data, error }) => {
+        if (!current) return
+        if (error) { setError(error.message); return }
+        const list = (data ?? []) as PaymentTerm[]
+        setPaymentTerms(list)
+        const preferredId = doc?.payment_terms_id ?? list.find((term) => term.is_default)?.id ?? list[0]?.id ?? ''
+        setPaymentTermsId((old) => old || preferredId)
+        const preferred = list.find((term) => term.id === preferredId)
+        if (!doc && jenis === 'faktur' && preferred) setBatas(addDays(today, preferred.due_days))
+      })
+    return () => { current = false }
+  }, [sb, companyId, doc?.payment_terms_id, jenis])
+  const selectedPaymentTerm = paymentTerms.find((term) => term.id === paymentTermsId)\n  function changePaymentTerm(id: string) {\n    setPaymentTermsId(id)\n    const term = paymentTerms.find((item) => item.id === id)\n    if (jenis === 'faktur' && term) setBatas(addDays(tanggal, term.due_days))\n  }\n  const subtotal = items.reduce((s, i) => s + Number(i.qty || 0) * Number(i.harga || 0), 0)
   const ppnNilai = Math.round(subtotal * Number(ppn || 0) / 100)
   const setItem = (idx: number, patch: Partial<Item>) => setItems((list) => list.map((x, i) => i === idx ? { ...x, ...patch } : x))
   function pilihProduk(idx: number, id: string) {
@@ -191,7 +212,7 @@ function DokumenForm({ sb, companyId, jenis, pemasok, currencies, doc, items: in
     e.preventDefault()
     setBusy(true); setError(null)
     const { error } = await sb.rpc('pb_simpan_dokumen', {
-      p: { id: doc?.id ?? null, company_id: companyId, jenis, pemasok_id: pemasokId, gudang_id: gudangId, no_referensi: ref, currency_code: currencyCode,
+      p: { id: doc?.id ?? null, company_id: companyId, jenis, pemasok_id: pemasokId, gudang_id: gudangId, no_referensi: ref, currency_code: currencyCode, payment_terms_id: paymentTermsId || null,
         tanggal, batas_tanggal: batas || null, ppn_persen: Number(ppn || 0), catatan,
         items: items.map((i) => ({ deskripsi: i.deskripsi, qty: Number(i.qty), harga: Number(i.harga || 0), produk_id: i.produk_id ?? null })) },
     })
@@ -213,8 +234,8 @@ function DokumenForm({ sb, companyId, jenis, pemasok, currencies, doc, items: in
         <label className="text-sm sm:col-span-2">Pemasok<select className="input mt-1" value={pemasokId} onChange={(e) => setPemasokId(e.target.value)} required>
           {pemasok.map((p) => <option key={p.id} value={p.id}>{p.nama}</option>)}
         </select></label>
-        <label className="text-sm">Mata uang<select className="input mt-1" value={currencyCode} onChange={(e) => setCurrencyCode(e.target.value)} required>{currencies.map((c) => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}</select></label>
-        <label className="text-sm">Tanggal<input type="date" className="input mt-1" value={tanggal} onChange={(e) => setTanggal(e.target.value)} required /></label>
+        <label className="text-sm">Mata uang<select className="input mt-1" value={currencyCode} onChange={(e) => setCurrencyCode(e.target.value)} required>{currencies.map((c) => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}</select></label>\n        <label className="text-sm">Syarat Pembayaran<select className="input mt-1" value={paymentTermsId} onChange={(e) => changePaymentTerm(e.target.value)} required disabled={!paymentTerms.length}><option value="">{paymentTerms.length ? 'Pilih syarat pembayaran' : 'Memuat syarat pembayaran…'}</option>{paymentTerms.map((term) => <option key={term.id} value={term.id}>{term.name}{term.is_default ? ' (default)' : ''}</option>)}</select>{selectedPaymentTerm && <span className="mt-1 block text-xs text-ink/55">Jatuh tempo {selectedPaymentTerm.due_days} hari{Number(selectedPaymentTerm.discount_percent) > 0 ? `; diskon ${fmtN(Number(selectedPaymentTerm.discount_percent))}% jika dibayar dalam ${selectedPaymentTerm.discount_days} hari` : ''}</span>}</label>
+        <label className="text-sm">Tanggal<input type="date" className="input mt-1" value={tanggal} onChange={(e) => { const value = e.target.value; setTanggal(value); if (jenis === 'faktur' && selectedPaymentTerm) setBatas(addDays(value, selectedPaymentTerm.due_days)) }} required /></label>
         <label className="text-sm">{jenis === 'faktur' ? 'Jatuh tempo' : 'Estimasi tiba'}<input type="date" className="input mt-1" value={batas} onChange={(e) => setBatas(e.target.value)} /></label>
       </div>
       <div className="space-y-2">
@@ -241,7 +262,7 @@ function DokumenForm({ sb, companyId, jenis, pemasok, currencies, doc, items: in
         </div>
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
-      <div className="flex gap-2"><button className="btn btn-primary" disabled={busy || !pemasokId || !gudangId}>{busy ? 'Menyimpan…' : 'Simpan'}</button><button type="button" className="btn" onClick={onCancel}>Batal</button></div>
+      <div className="flex gap-2"><button className="btn btn-primary" disabled={busy || !pemasokId || !gudangId || !paymentTermsId}>{busy ? 'Menyimpan…' : 'Simpan'}</button><button type="button" className="btn" onClick={onCancel}>Batal</button></div>
     </form>
   )
 }
