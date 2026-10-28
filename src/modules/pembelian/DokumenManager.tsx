@@ -10,6 +10,7 @@ import type { PaymentTerm } from '@/modules/pengaturan/paymentTerms'
 import type { ShippingMethod } from '@/modules/pengaturan/shipping'
 import type { ShippingTerm } from '@/modules/pengaturan/shippingTerms'
 import type { Dokumen, Item, Jenis, Pemasok, PbPerm, RekeningPilihan } from './types'
+import TransactionFavoriteControls, { type FavoritePayload } from '@/modules/pengaturan/TransactionFavoriteControls'
 
 const LABEL: Record<string, string> = { draft: 'Draft', dipesan: 'Dipesan', diterima: 'Diterima', terbit: 'Terbit', batal: 'Batal' }
 function statusLabel(d: Dokumen) {
@@ -209,6 +210,19 @@ function DokumenForm({ sb, companyId, jenis, pemasok, currencies, shippingMethod
     const term = paymentTerms.find((item) => item.id === id)
     if (jenis === 'faktur' && term) setBatas(addDays(tanggal, term.due_days))
   }
+  function applyFavorite(payload: FavoritePayload) {
+    if (payload.counterparty_id) setPemasokId(payload.counterparty_id)
+    if (payload.currency_code && currencies.some((currency) => currency.code === payload.currency_code)) setCurrencyCode(payload.currency_code)
+    if (payload.shipping_method_id !== undefined) setShippingMethodId(payload.shipping_method_id ?? '')
+    if (payload.shipping_term_id !== undefined) setShippingTermId(payload.shipping_term_id ?? '')
+    if (payload.payment_terms_id) changePaymentTerm(payload.payment_terms_id)
+    if (payload.gudang_id && gudang.some((item) => item.id === payload.gudang_id)) setGudangId(payload.gudang_id)
+    if (payload.ppn_persen !== undefined) setPpn(String(payload.ppn_persen))
+    if (payload.catatan !== undefined) setCatatan(payload.catatan ?? '')
+    if (payload.items?.length) setItems(payload.items.map((item) => ({
+      deskripsi: item.deskripsi ?? '', qty: item.qty ?? 1, harga: item.harga ?? 0, produk_id: item.produk_id ?? null,
+    })))
+  }
   const subtotal = items.reduce((s, i) => s + Number(i.qty || 0) * Number(i.harga || 0), 0)
   const ppnNilai = Math.round(subtotal * Number(ppn || 0) / 100)
   const setItem = (idx: number, patch: Partial<Item>) => setItems((list) => list.map((x, i) => i === idx ? { ...x, ...patch } : x))
@@ -234,6 +248,17 @@ function DokumenForm({ sb, companyId, jenis, pemasok, currencies, shippingMethod
   return (
     <form onSubmit={submit} className="card space-y-4 p-4">
       <h2 className="font-medium">{doc ? 'Ubah ' + doc.nomor : (jenis === 'faktur' ? 'Faktur baru' : 'Pesanan baru')}</h2>
+      <TransactionFavoriteControls
+        companyId={companyId}
+        favoriteType={jenis === 'faktur' ? 'purchase_invoice' : 'purchase_order'}
+        payload={{
+          counterparty_id: pemasokId, currency_code: currencyCode, shipping_method_id: shippingMethodId || null,
+          shipping_term_id: shippingTermId || null, payment_terms_id: paymentTermsId, gudang_id: gudangId,
+          ppn_persen: Number(ppn || 0), catatan,
+          items: items.map((item) => ({ deskripsi: item.deskripsi, qty: item.qty, harga: item.harga, produk_id: item.produk_id ?? null })),
+        }}
+        onApply={applyFavorite}
+      />
     <label className="block text-sm">Gudang penerimaan barang
       <select className="input mt-1" value={gudangId} onChange={(e) => setGudangId(e.target.value)} required>
         {gudang.map((g) => <option key={g.id} value={g.id}>{g.nama}{g.is_default ? ' (utama)' : ''}</option>)}
