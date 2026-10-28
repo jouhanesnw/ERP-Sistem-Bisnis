@@ -10,6 +10,7 @@ import type { PaymentTerm } from '@/modules/pengaturan/paymentTerms'
 import type { ShippingMethod } from '@/modules/pengaturan/shipping'
 import type { ShippingTerm } from '@/modules/pengaturan/shippingTerms'
 import type { Dokumen, Item, Jenis, Pelanggan, PjPerm, RekeningPilihan } from './types'
+import TransactionFavoriteControls, { type FavoritePayload } from '@/modules/pengaturan/TransactionFavoriteControls'
 
 
 const MODUL = 'penjualan'
@@ -171,6 +172,19 @@ function DokumenForm({ sb, companyId, jenis, pelanggan, currencies, shippingMeth
     const term = paymentTerms.find((item) => item.id === id)
     if (jenis === 'faktur' && term) setBatas(addDays(tanggal, term.due_days))
   }
+  function applyFavorite(payload: FavoritePayload) {
+    if (payload.counterparty_id) setPel(payload.counterparty_id)
+    if (payload.currency_code && currencies.some((currency) => currency.code === payload.currency_code)) setCurrencyCode(payload.currency_code)
+    if (payload.shipping_method_id !== undefined) setShippingMethodId(payload.shipping_method_id ?? '')
+    if (payload.shipping_term_id !== undefined) setShippingTermId(payload.shipping_term_id ?? '')
+    if (payload.payment_terms_id) changePaymentTerm(payload.payment_terms_id)
+    if (payload.gudang_id && gudang.some((item) => item.id === payload.gudang_id)) setGudangId(payload.gudang_id)
+    if (payload.ppn_persen !== undefined) setPpn(String(payload.ppn_persen))
+    if (payload.catatan !== undefined) setCatatan(payload.catatan ?? '')
+    if (payload.items?.length) setItems(payload.items.map((item) => ({
+      deskripsi: item.deskripsi ?? '', qty: item.qty ?? 1, harga: item.harga ?? 0, produk_id: item.produk_id ?? null,
+    })))
+  }
   const subtotal = items.reduce((s, i) => s + Number(i.qty || 0) * Number(i.harga || 0), 0)
   const setItem = (idx: number, patch: Partial<Item>) => setItems((old) => old.map((it, i) => i === idx ? { ...it, ...patch } : it))
   function pilihProduk(idx: number, id: string) {
@@ -187,6 +201,17 @@ function DokumenForm({ sb, companyId, jenis, pelanggan, currencies, shippingMeth
   }
   return <form onSubmit={submit} className="card space-y-4 p-4">
     <h2 className="font-medium">{doc ? `Ubah ${doc.nomor}` : `Buat ${jenis === 'faktur' ? 'faktur' : 'penawaran'}`}</h2>
+    <TransactionFavoriteControls
+      companyId={companyId}
+      favoriteType={jenis === 'faktur' ? 'sales_invoice' : 'sales_quote'}
+      payload={{
+        counterparty_id: pel, currency_code: currencyCode, shipping_method_id: shippingMethodId || null,
+        shipping_term_id: shippingTermId || null, payment_terms_id: paymentTermsId, gudang_id: gudangId,
+        ppn_persen: Number(ppn || 0), catatan,
+        items: items.map((item) => ({ deskripsi: item.deskripsi, qty: item.qty, harga: item.harga, produk_id: item.produk_id ?? null })),
+      }}
+      onApply={applyFavorite}
+    />
     <label className="block text-sm">Gudang pengeluaran barang
       <select className="input mt-1" value={gudangId} onChange={(e) => setGudangId(e.target.value)} required>
         {gudang.map((g) => <option key={g.id} value={g.id}>{g.nama}{g.is_default ? ' (utama)' : ''}</option>)}
