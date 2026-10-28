@@ -128,10 +128,20 @@ begin
     raise exception 'Status PTKP tidak valid';
   end if;
   if branch_value is not null and not exists (
-    select 1 from public.company_branches b where b.id=branch_value and b.company_id=cid and b.active
+    select 1 from public.company_branches b
+    where b.id=branch_value and b.company_id=cid
+      and (b.active or exists (
+        select 1 from public.company_employees old
+        where old.id=eid and old.company_id=cid and old.branch_id=branch_value
+      ))
   ) then raise exception 'Cabang tidak aktif atau bukan milik perusahaan ini'; end if;
   if department_value is not null and not exists (
-    select 1 from public.company_departments d where d.id=department_value and d.company_id=cid and d.active
+    select 1 from public.company_departments d
+    where d.id=department_value and d.company_id=cid
+      and (d.active or exists (
+        select 1 from public.company_employees old
+        where old.id=eid and old.company_id=cid and old.department_id=department_value
+      ))
   ) then raise exception 'Departemen tidak aktif atau bukan milik perusahaan ini'; end if;
 
   if eid is null then
