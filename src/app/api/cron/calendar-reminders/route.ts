@@ -163,7 +163,7 @@ function nextDate(value: string, repeatRule: ReminderEvent['repeat_rule']) {
   return date.toISOString()
 }
 async function createNextOccurrence(sb: ReturnType<typeof createClient>, event: ReminderEvent) {
-  if (event.repeat_rule === 'none' || !event.reminder_at) return
+  if (event.repeat_rule === 'none') return
   const shift = (value: string | null) => value ? nextDate(value, event.repeat_rule) : null
   const { error } = await sb.from('company_calendar_events').insert({
     company_id: event.company_id,
@@ -177,10 +177,11 @@ async function createNextOccurrence(sb: ReturnType<typeof createClient>, event: 
     attachment_links: event.attachment_links ?? [],
     reminder_channels: event.reminder_channels ?? [],
     reminder_recipients: event.reminder_recipients ?? {},
-    reminder_status: 'pending',
+    reminder_status: event.reminder_at && event.reminder_channels?.length ? 'pending' : 'not_configured',
     reminder_attempts: 0,
     reminder_sent_at: null,
     reminder_last_error: null,
+    repeat_processed_at: null,
     created_by: event.created_by,
   })
   if (error) throw new Error(`Pengingat berikutnya tidak dapat dibuat: ${error.message}`)
@@ -251,17 +252,37 @@ export async function GET(request: Request) {
       results.push({ id: event.id, status: 'failed', channels: channelResults, error: finishError.message })
       continue
     }
+    results.push({ id: event.id, status: 'sent', channels: channelResults })
+  }
+
+  const { data: repeatRows, error: repeatReadError } = await sb.from('company_calendar_events')
+    .select('id, company_id, calendar_id, title, description, start_at, due_at, reminder_at, repeat_rule, attachment_links, reminder_channels, reminder_recipients, reminder_attempts, created_by, company_calendars(name)')
+    .neq('repeat_rule', 'none').is('repeat_processed_at', null).lte('start_at', now)
+    .order('start_at', { ascending: true }).limit(50)
+  let repeatProcessed = 0
+  const repeatErrors: string[] = []
+  if (repeatReadError) repeatErrors.push(repeatReadError.message)
+  for (const raw of repeatRows ?? []) {
+    const event = raw as unknown as ReminderEvent
+    const { data: claimed, error: claimError } = await sb.from('company_calendar_events')
+      .update({ repeat_processed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq('id', event.id).is('repeat_processed_at', null).select('id').maybeSingle()
+    if (claimError || !claimed) continue
     try {
       await createNextOccurrence(sb, event)
-      results.push({ id: event.id, status: 'sent', channels: channelResults })
+      repeatProcessed += 1
     } catch (e) {
-      results.push({ id: event.id, status: 'sent_next_occurrence_failed', channels: channelResults, error: e instanceof Error ? e.message : 'Gagal membuat event berulang.' })
+      const message = e instanceof Error ? e.message : 'Gagal membuat event berulang.'
+      repeatErrors.push(message)
+      await sb.from('company_calendar_events').update({ repeat_processed_at: null, reminder_last_error: `Pengulangan: ${message}`, updated_at: new Date().toISOString() }).eq('id', event.id)
     }
   }
 
   return Response.json({
     processed: results.length,
     sent: results.filter((item) => item.status === 'sent').length,
+    repeatProcessed,
+    ...(repeatErrors.length ? { repeatErrors } : {}),
     results,
   })
 }
