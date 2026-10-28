@@ -12,12 +12,20 @@ const FORM_HREF: Record<string, string> = {
   sales_invoice: '/penjualan/faktur',
   purchase_order: '/pembelian/pesanan',
   purchase_invoice: '/pembelian/faktur',
+  kas_in: '/kas/masuk',
+  kas_out: '/kas/keluar',
+  kas_transfer: '/kas/transfer',
+  journal_manual: '/akuntansi/jurnal',
 }
 const FORM_ICON: Record<string, typeof ShoppingCart> = {
   sales_quote: ShoppingCart,
   sales_invoice: Receipt,
   purchase_order: Package,
   purchase_invoice: Receipt,
+  kas_in: Wallet,
+  kas_out: Wallet,
+  kas_transfer: Wallet,
+  journal_manual: Receipt,
 }
 const FILTERS = [
   { value: 'all', label: 'Semua' },
@@ -25,6 +33,10 @@ const FILTERS = [
   { value: 'sales_invoice', label: 'Faktur Penjualan' },
   { value: 'purchase_order', label: 'Pesanan Pembelian' },
   { value: 'purchase_invoice', label: 'Faktur Pembelian' },
+  { value: 'kas_in', label: 'Kas Masuk' },
+  { value: 'kas_out', label: 'Kas Keluar' },
+  { value: 'kas_transfer', label: 'Transfer Antar Rekening' },
+  { value: 'journal_manual', label: 'Jurnal Umum' },
 ]
 
 export default function TransactionFavoritesManager({ companyId, initial, initialError }: {
@@ -60,7 +72,7 @@ export default function TransactionFavoritesManager({ companyId, initial, initia
     <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-semibold">Transaksi Favorit</h1>
-        <p className="mt-1 max-w-3xl text-sm text-ink/60">Kelola templat formulir penjualan dan pembelian. Favorit menyimpan akun/item dan detail formulir, bukan transaksi yang sudah dibukukan.</p>
+        <p className="mt-1 max-w-3xl text-sm text-ink/60">Kelola templat formulir penjualan, pembelian, Kas &amp; Bank, dan jurnal manual. Favorit menyimpan rincian formulir, bukan transaksi yang sudah dibukukan.</p>
       </div>
       {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       {initialError && <p className="text-sm text-red-600">Favorit belum dapat dimuat: {initialError}</p>}
@@ -93,11 +105,11 @@ export default function TransactionFavoritesManager({ companyId, initial, initia
           <tbody>
             {visible.map((row) => {
               const Icon = FORM_ICON[row.favorite_type] ?? Package
-              const itemCount = Array.isArray(row.payload?.items) ? row.payload.items.length : 0
+              const itemCount = Array.isArray(row.payload?.items) ? row.payload.items.length : Array.isArray(row.payload?.journal_lines) ? row.payload.journal_lines.length : 0
               return <tr key={row.id} className="border-b border-line last:border-0 align-top">
                 <td className="p-3"><div className="font-medium">{row.name}</div></td>
                 <td className="p-3"><span className="inline-flex items-center gap-2"><Icon size={15} className="text-ink/45" />{favoriteTypeLabel(row.favorite_type)}</span></td>
-                <td className="p-3">{itemCount} baris item · {row.payload?.currency_code ?? 'IDR'}</td>
+                <td className="p-3">{itemCount} baris detail{row.payload?.currency_code ? ` · ${row.payload.currency_code}` : ''}</td>
                 <td className="p-3">{row.visibility === 'all_members' ? 'Semua pengguna' : 'Pribadi'}</td>
                 <td className="whitespace-nowrap p-3">{row.created_at ? new Date(row.created_at).toLocaleDateString('id-ID') : '—'}</td>
                 <td className="whitespace-nowrap p-3 text-right"><div className="flex justify-end gap-2">
