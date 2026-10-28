@@ -9,16 +9,19 @@ import {
 } from 'lucide-react'
 
 type View = 'year' | 'month' | 'week' | 'day'
+const EVENT_TYPES = ['Kegiatan','Jadwal Pembayaran Gaji','Jadwal Pembayaran Beban','Jadwal Penerimaan Barang','Jadwal Pengiriman Barang','Jadwal Stok Opname','Jatuh Tempo Giro Keluar','Jatuh Tempo Giro Masuk','Jatuh Tempo Hutang','Jatuh Tempo No. Produksi','Jatuh Tempo PPh Pembelian','Jatuh Tempo PPh Penjualan','Jatuh Tempo Pembayaran','Jatuh Tempo Penerimaan','Jatuh Tempo Permintaan Barang','Jatuh Tempo Piutang','Transaksi Terjadwal','Tukar Faktur'] as const
 type Member = { userId: string; name: string; role: string }
 type Branch = { id: string; name: string }
 type CalendarRow = {
   id: string; company_id: string; calendar_type: string; name: string; description: string | null
+  default_reminder_minutes_before: number; default_reminder_channels: string[]; default_reminder_recipients: { email?: string; whatsapp?: string; telegram_chat_id?: string }
   access_all: boolean; access_user_ids: string[]; access_branch_ids: string[]
   event_edit_all: boolean; event_edit_user_ids: string[]; event_edit_branch_ids: string[]
   admin_all: boolean; admin_user_ids: string[]; admin_branch_ids: string[]; created_by: string; created_at: string
 }
 type CalendarEvent = {
   id: string; company_id: string; calendar_id: string; title: string; description: string | null
+  event_type: string; source_table?: string | null; source_id?: string | null; source_url?: string | null
   start_at: string; due_at: string | null; reminder_at: string | null; repeat_rule: string
   attachment_links: { url: string; label?: string }[]; reminder_channels: string[]
   reminder_recipients: { email?: string; whatsapp?: string; telegram_chat_id?: string }
@@ -127,7 +130,7 @@ export default function CalendarManager({
     setNotice('Event dihapus.'); router.refresh()
   }
   async function saveCalendar(form: {
-    calendar_type: string; name: string; description: string; access_all: boolean; access_user_ids: string[]; access_branch_ids: string[]
+    calendar_type: string; name: string; description: string; default_reminder_minutes_before: number; default_reminder_channels: string[]; default_reminder_recipients: { email?: string; whatsapp?: string; telegram_chat_id?: string }; access_all: boolean; access_user_ids: string[]; access_branch_ids: string[]
     event_edit_all: boolean; event_edit_user_ids: string[]; event_edit_branch_ids: string[]; admin_all: boolean; admin_user_ids: string[]; admin_branch_ids: string[]
   }) {
     setBusy(true); setError(null); setNotice(null)
@@ -137,9 +140,9 @@ export default function CalendarManager({
     }
     const query = editingCalendar
       ? await sb.from('company_calendars').update(payload).eq('id', editingCalendar.id).eq('company_id', companyId)
-        .select('id, company_id, calendar_type, name, description, access_all, access_user_ids, access_branch_ids, event_edit_all, event_edit_user_ids, event_edit_branch_ids, admin_all, admin_user_ids, admin_branch_ids, created_by, created_at').single()
+        .select('id, company_id, calendar_type, name, description, default_reminder_minutes_before, default_reminder_channels, default_reminder_recipients, access_all, access_user_ids, access_branch_ids, event_edit_all, event_edit_user_ids, event_edit_branch_ids, admin_all, admin_user_ids, admin_branch_ids, created_by, created_at').single()
       : await sb.from('company_calendars').insert(payload)
-        .select('id, company_id, calendar_type, name, description, access_all, access_user_ids, access_branch_ids, event_edit_all, event_edit_user_ids, event_edit_branch_ids, admin_all, admin_user_ids, admin_branch_ids, created_by, created_at').single()
+        .select('id, company_id, calendar_type, name, description, default_reminder_minutes_before, default_reminder_channels, default_reminder_recipients, access_all, access_user_ids, access_branch_ids, event_edit_all, event_edit_user_ids, event_edit_branch_ids, admin_all, admin_user_ids, admin_branch_ids, created_by, created_at').single()
     setBusy(false)
     if (query.error) { setError(query.error.message); return }
     const row = query.data as CalendarRow
@@ -159,14 +162,14 @@ export default function CalendarManager({
     setCalendarId(next[0]?.id ?? ''); setNotice('Kalender dihapus.'); router.refresh()
   }
   async function saveEvent(form: {
-    title: string; description: string; start_at: string; due_at: string; reminder_at: string; repeat_rule: string
+    title: string; description: string; event_type: string; start_at: string; due_at: string; reminder_at: string; repeat_rule: string
     attachment_links: { url: string; label?: string }[]; reminder_channels: string[]
     reminder_recipients: { email?: string; whatsapp?: string; telegram_chat_id?: string }
   }) {
     if (!currentCalendar) return
     setBusy(true); setError(null); setNotice(null)
     const payload = {
-      company_id: companyId, calendar_id: currentCalendar.id, title: form.title.trim(),
+      company_id: companyId, calendar_id: currentCalendar.id, title: form.title.trim(), event_type: form.event_type,
       description: form.description.trim() || null, start_at: new Date(form.start_at).toISOString(),
       due_at: form.due_at ? new Date(form.due_at).toISOString() : null,
       reminder_at: form.reminder_at ? new Date(form.reminder_at).toISOString() : null,
@@ -316,6 +319,7 @@ function EventModal({ initial, selectedDay, busy, onClose, onSave }: {
 }) {
   const [title, setTitle] = useState(initial?.title ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
+  const [eventType, setEventType] = useState(initial?.event_type ?? 'Kegiatan')
   const defaultStart = new Date(selectedDay)
   if (sameDay(selectedDay, new Date())) {
     const now = new Date()
@@ -364,7 +368,7 @@ function EventModal({ initial, selectedDay, busy, onClose, onSave }: {
     if (invalidLink) { setFormError('Setiap lampiran harus berupa URL lengkap yang diawali http:// atau https://.'); return }
     const attachment_links = rawLinks.map((url) => ({ url, label: url }))
     onSave({
-      title, description, start_at: startAt, due_at: dueEnabled ? dueAt : '', reminder_at: reminderEnabled ? reminderAt : '',
+      title, description, event_type: eventType, start_at: startAt, due_at: dueEnabled ? dueAt : '', reminder_at: reminderEnabled ? reminderAt : '',
       repeat_rule: repeatRule, attachment_links, reminder_channels: channels,
       reminder_recipients: { email: email.trim() || undefined, whatsapp: whatsapp.trim() || undefined, telegram_chat_id: telegram.trim() || undefined },
     })
@@ -432,6 +436,7 @@ function CalendarSettingsModal({ initial, members, branches, currentUserId, busy
   const [calendarType, setCalendarType] = useState(initial?.calendar_type ?? 'Kegiatan')
   const [name, setName] = useState(initial?.name ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
+  const [eventType, setEventType] = useState(initial?.event_type ?? 'Kegiatan')
   const [accessAll, setAccessAll] = useState(initial?.access_all ?? false)
   const [accessUsers, setAccessUsers] = useState<string[]>(initial?.access_user_ids ?? [currentUserId])
   const [accessBranches, setAccessBranches] = useState<string[]>(initial?.access_branch_ids ?? [])
