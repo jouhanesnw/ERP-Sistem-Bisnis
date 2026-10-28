@@ -65,7 +65,7 @@ create index company_employees_department_idx
 alter table public.company_employees enable row level security;
 grant select, insert, update, delete on public.company_employees to authenticated;
 create policy company_employees_select on public.company_employees
-  for select using (public.is_member(company_id));
+  for select using (public.is_admin(company_id));
 create policy company_employees_insert on public.company_employees
   for insert with check (public.is_admin(company_id));
 create policy company_employees_update on public.company_employees
