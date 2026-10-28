@@ -14,12 +14,6 @@ export type ShippingTerm = {
   created_at?: string
 }
 
-const STARTER_TERMS = [
-  { name: 'FCA', description: 'Free Carrier — penjual menyerahkan barang kepada pengangkut yang ditunjuk pembeli di tempat yang disepakati.' },
-  { name: 'FOB', description: 'Free On Board — penjual menyerahkan barang ketika barang sudah berada di atas kapal di pelabuhan pengiriman yang disepakati.' },
-  { name: 'CIF', description: 'Cost, Insurance and Freight — penjual membayar biaya angkutan dan asuransi ke pelabuhan tujuan; risiko beralih saat barang berada di atas kapal di pelabuhan asal.' },
-  { name: 'DAP', description: 'Delivered at Place — penjual menanggung risiko sampai barang tiba di tempat tujuan yang disepakati, siap untuk dibongkar.' },
-]
 
 export default function ShippingTermsManager({ companyId, initial, initialError }: {
   companyId: string
