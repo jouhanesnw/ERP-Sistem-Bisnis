@@ -230,7 +230,7 @@ export default function CalendarManager({
           </select>
           <button className="btn" type="button" onClick={() => { setEditingCalendar(null); setSettingsTab('setup'); setSettingsOpen(true); setError(null) }}><Plus size={16} /> Kalender</button>
           {currentCalendar && <button className="btn" type="button" disabled={!isAdmin} title={!isAdmin ? 'Kamu tidak memiliki hak administrasi kalender ini' : undefined} onClick={() => { setEditingCalendar(currentCalendar); setSettingsTab('setup'); setSettingsOpen(true); setError(null) }}><Settings2 size={16} /> Pengaturan</button>}
-          <button className="btn-primary" type="button" disabled={!currentCalendar || !canEditEvents} onClick={() => openNewEvent(cursor)}><Plus size={16} /> Tambah Event</button>
+          <button className="btn-primary whitespace-nowrap inline-flex items-center justify-center gap-2" type="button" disabled={!currentCalendar || !canEditEvents} onClick={() => openNewEvent(cursor)}><span aria-hidden="true">−</span> Buat Event</button>
         </div>
       </header>
       {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
