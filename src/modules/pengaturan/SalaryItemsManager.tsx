@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, ChevronDown, Pencil, Plus, Search, Trash2, Wallet, X } from 'lucide-react'
+import { Check, ChevronDown, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { getSalaryPayType, SALARY_ITEM_TYPES, type ExpenseAccountOption, type SalaryItem, type SalaryItemType } from './salaryItems'
 
