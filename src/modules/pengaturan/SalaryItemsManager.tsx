@@ -4,7 +4,21 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Check, ChevronDown, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import { supabaseBrowser } from '@/lib/supabase/client'
-import { getSalaryPayType, SALARY_ITEM_TYPES, type ExpenseAccountOption, type SalaryItem, type SalaryItemType } from './salaryItems'
+import {
+  getSalaryPayOptions,
+  needsExpenseAccount,
+  needsPercentage,
+  SALARY_ITEM_TYPES,
+  supportsMaximumSalary,
+  type ExpenseAccountOption,
+  type SalaryItem,
+  type SalaryItemType,
+  type SalaryPayType,
+} from './salaryItems'
+
+function money(value: number) {
+  return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(value)
+}
 
 export default function SalaryItemsManager({ companyId, initial, accounts, initialError }: {
   companyId: string
@@ -48,7 +62,7 @@ export default function SalaryItemsManager({ companyId, initial, accounts, initi
       <div className="flex flex-wrap items-center gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold">Gaji/Tunjangan</h1>
-          <p className="mt-1 text-sm text-ink/60">Atur komponen gaji, tunjangan, dan potongan beserta akun bebannya untuk pencatatan penggajian.</p>
+          <p className="mt-1 text-sm text-ink/60">Atur komponen gaji berdasarkan tipe, periode pembayaran, persentase, dan akun beban yang diperlukan.</p>
         </div>
         <button type="button" className="btn btn-primary ml-auto" onClick={() => { setError(null); setNotice(null); setEditing('new') }}>
           <Plus size={16} /> Tambah Baru
@@ -60,11 +74,12 @@ export default function SalaryItemsManager({ companyId, initial, accounts, initi
       {initialError && <p className="text-sm text-red-600">Data gaji/tunjangan atau akun beban belum dapat dimuat: {initialError}</p>}
 
       <div className="card overflow-x-auto">
-        <table className="w-full min-w-[850px] text-left text-sm">
+        <table className="w-full min-w-[1050px] text-left text-sm">
           <thead><tr className="border-b border-line bg-canvas text-ink/60">
             <th className="p-3 font-medium">Nama</th>
             <th className="p-3 font-medium">Tipe Gaji/Tunjangan</th>
             <th className="p-3 font-medium">Bayar/Potong</th>
+            <th className="p-3 font-medium">% dari Gaji</th>
             <th className="p-3 font-medium">Akun Beban</th>
             <th className="p-3 font-medium">Status</th>
             <th className="p-3" />
@@ -75,7 +90,8 @@ export default function SalaryItemsManager({ companyId, initial, accounts, initi
                 <td className="p-3 font-medium text-ink">{item.name}</td>
                 <td className="p-3"><span className="block max-w-[330px] whitespace-normal">{item.item_type}</span></td>
                 <td className="whitespace-nowrap p-3">{item.pay_type}</td>
-                <td className="p-3"><span className="block max-w-[250px] whitespace-normal">{item.account ? `${item.account.kode} · ${item.account.nama}` : 'Akun tidak tersedia/nonaktif'}</span></td>
+                <td className="whitespace-nowrap p-3 tabular-nums">{item.percentage_of_salary == null ? '—' : `${new Intl.NumberFormat('id-ID', { maximumFractionDigits: 4 }).format(Number(item.percentage_of_salary))}%`}</td>
+                <td className="p-3"><span className="block max-w-[250px] whitespace-normal">{item.account ? `${item.account.kode} · ${item.account.nama}` : '—'}</span></td>
                 <td className="p-3"><span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${item.active ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'}`}>{item.active ? 'Aktif' : 'Nonaktif'}</span></td>
                 <td className="whitespace-nowrap p-3 text-right"><div className="flex justify-end gap-1">
                   <button type="button" className="btn px-2" title="Ubah" aria-label={`Ubah ${item.name}`} onClick={() => { setError(null); setNotice(null); setEditing(item) }}><Pencil size={15} /></button>
@@ -83,7 +99,7 @@ export default function SalaryItemsManager({ companyId, initial, accounts, initi
                 </div></td>
               </tr>
             ))}
-            {!rows.length && <tr><td colSpan={6} className="p-8 text-center text-ink/60">Belum ada komponen gaji/tunjangan. Pilih Tambah Baru untuk membuat komponen pertama.</td></tr>}
+            {!rows.length && <tr><td colSpan={7} className="p-8 text-center text-ink/60">Belum ada komponen gaji/tunjangan. Pilih Tambah Baru untuk membuat komponen pertama.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -103,6 +119,12 @@ function SalaryItemForm({ companyId, item, accounts, onCancel, onSaved }: {
   const sb = useMemo(() => supabaseBrowser(), [])
   const [name, setName] = useState(item?.name ?? '')
   const [itemType, setItemType] = useState<SalaryItemType>(item?.item_type ?? SALARY_ITEM_TYPES[0])
+  const [payType, setPayType] = useState<SalaryPayType>(() => {
+    const options = getSalaryPayOptions(item?.item_type ?? SALARY_ITEM_TYPES[0])
+    return item?.pay_type && options.includes(item.pay_type) ? item.pay_type : options[0]
+  })
+  const [percentage, setPercentage] = useState(item?.percentage_of_salary == null ? '' : String(item.percentage_of_salary))
+  const [maximumSalaryEnabled, setMaximumSalaryEnabled] = useState(item?.maximum_salary_enabled ?? false)
   const [accountId, setAccountId] = useState(item?.account_id ?? '')
   const [accountSearch, setAccountSearch] = useState(() => {
     const account = accounts.find((row) => row.id === item?.account_id)
@@ -112,26 +134,65 @@ function SalaryItemForm({ companyId, item, accounts, onCancel, onSaved }: {
   const [active, setActive] = useState(item?.active ?? true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const payType = getSalaryPayType(itemType)
+  const payOptions = getSalaryPayOptions(itemType)
+  const percentageRequired = needsPercentage(itemType)
+  const accountRequired = needsExpenseAccount(itemType)
+  const maximumSupported = supportsMaximumSalary(itemType)
   const matchingAccounts = accounts.filter((account) => `${account.kode} ${account.nama}`.toLocaleLowerCase('id').includes(accountSearch.toLocaleLowerCase('id')))
+
+  function changeType(nextType: SalaryItemType) {
+    setItemType(nextType)
+    setPayType(getSalaryPayOptions(nextType)[0])
+    if (!needsPercentage(nextType)) setPercentage('')
+    if (!needsExpenseAccount(nextType)) { setAccountId(''); setAccountSearch(''); setAccountOpen(false) }
+    if (!supportsMaximumSalary(nextType)) setMaximumSalaryEnabled(false)
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
     if (!name.trim()) return setError('Nama gaji/tunjangan wajib diisi.')
-    if (!accountId || !accounts.some((account) => account.id === accountId)) return setError('Pilih akun beban aktif yang tersedia.')
+    if (!getSalaryPayOptions(itemType).includes(payType)) return setError('Pilihan Bayar/Potong tidak sesuai dengan tipe.')
+    let percentageValue: number | null = null
+    if (percentageRequired) {
+      percentageValue = Number(percentage)
+      if (percentage.trim() === '' || !Number.isFinite(percentageValue) || percentageValue < 0 || percentageValue > 100) {
+        return setError('Persentase dari gaji wajib diisi antara 0 sampai 100%.')
+      }
+    }
+    if (accountRequired && (!accountId || !accounts.some((account) => account.id === accountId))) {
+      return setError('Pilih akun beban aktif yang tersedia.')
+    }
     setBusy(true)
-    const payload = { id: item?.id ?? null, company_id: companyId, name: name.trim(), item_type: itemType, account_id: accountId, active }
+    const payload = {
+      id: item?.id ?? null,
+      company_id: companyId,
+      name: name.trim(),
+      item_type: itemType,
+      pay_type: payType,
+      percentage_of_salary: percentageValue,
+      maximum_salary_enabled: maximumSupported && maximumSalaryEnabled,
+      account_id: accountRequired ? accountId : null,
+      active,
+    }
     const { data, error: saveError } = await sb.rpc('company_salary_item_save', { p: payload })
     setBusy(false)
     if (saveError) {
       setError(saveError.code === '23505' ? 'Nama gaji/tunjangan sudah digunakan. Gunakan nama lain.' : saveError.message)
       return
     }
-    const account = accounts.find((row) => row.id === accountId)!
+    const account = accountRequired ? accounts.find((row) => row.id === accountId) ?? null : null
     onSaved({
-      id: data as string, company_id: companyId, name: name.trim(), item_type: itemType,
-      pay_type: payType, account_id: accountId, active, account,
+      id: data as string,
+      company_id: companyId,
+      name: name.trim(),
+      item_type: itemType,
+      pay_type: payType,
+      percentage_of_salary: percentageValue,
+      maximum_salary_enabled: maximumSupported && maximumSalaryEnabled,
+      account_id: accountRequired ? accountId : null,
+      active,
+      account,
       created_at: item?.created_at,
     })
   }
@@ -144,7 +205,7 @@ function SalaryItemForm({ companyId, item, accounts, onCancel, onSaved }: {
         <div className="flex items-start gap-3 border-b border-line px-5 py-4">
           <div className="min-w-0 flex-1">
             <h2 id="salary-item-title" className="text-lg font-semibold">{item ? 'Ubah Gaji/Tunjangan' : 'Data Baru'}</h2>
-            <p className="mt-1 text-sm text-ink/60">Tentukan nama komponen, tipe, dan akun beban yang digunakan.</p>
+            <p className="mt-1 text-sm text-ink/60">Kolom yang muncul menyesuaikan tipe gaji/tunjangan yang dipilih.</p>
           </div>
           <button type="button" className="btn px-2" aria-label="Tutup popup" onClick={onCancel} disabled={busy}><X size={18} /></button>
         </div>
@@ -161,31 +222,53 @@ function SalaryItemForm({ companyId, item, accounts, onCancel, onSaved }: {
               <input id="salary-name" className="input w-full" value={name} onChange={(e) => setName(e.target.value)} required maxLength={120} autoFocus placeholder="Contoh: Gaji Pokok, Tunjangan Makan" />
 
               <label htmlFor="salary-item-type" className="text-sm font-medium">Tipe Gaji/Tunjangan</label>
-              <select id="salary-item-type" className="input w-full" value={itemType} onChange={(e) => setItemType(e.target.value as SalaryItemType)}>
+              <select id="salary-item-type" className="input w-full" value={itemType} onChange={(e) => changeType(e.target.value as SalaryItemType)}>
                 {SALARY_ITEM_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
               </select>
 
               <label htmlFor="salary-pay-type" className="text-sm font-medium">Bayar/Potong</label>
-              <input id="salary-pay-type" className="input w-full bg-slate-50 text-ink/65" value={payType} readOnly aria-readonly="true" title="Diisi otomatis sesuai tipe gaji/tunjangan yang dipilih" />
+              <select id="salary-pay-type" className="input w-full" value={payType} onChange={(e) => setPayType(e.target.value as SalaryPayType)}>
+                {payOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
 
-              <label htmlFor="salary-account-search" className="self-start pt-2 text-sm font-medium">Akun Beban <span className="text-red-600">*</span></label>
-              <div className="relative min-w-0">
-                <div className="relative">
-                  <input id="salary-account-search" className="input w-full pr-10" value={accountSearch}
-                    onChange={(e) => { setAccountSearch(e.target.value); setAccountId(''); setAccountOpen(true) }}
-                    onFocus={() => setAccountOpen(true)} maxLength={160} autoComplete="off" placeholder="Cari/Pilih Akun Perkiraan..." aria-expanded={accountOpen} aria-controls="salary-account-options" />
-                  <button type="button" className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-ink/70" aria-label="Cari akun beban" onClick={() => setAccountOpen((open) => !open)}><Search size={18} /></button>
+              {percentageRequired && <>
+                <label htmlFor="salary-percentage" className="text-sm font-medium">% dari Gaji <span className="text-red-600">*</span></label>
+                <div className="flex max-w-[300px] items-stretch">
+                  <span className="inline-flex items-center rounded-l-md border border-r-0 border-line bg-canvas px-3 text-sm text-ink/60">%</span>
+                  <input id="salary-percentage" className="input min-w-0 rounded-l-none" type="number" min="0" max="100" step="0.0001" value={percentage} onChange={(e) => setPercentage(e.target.value)} required />
                 </div>
-                {accountOpen && <div id="salary-account-options" className="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-line bg-white shadow-lg">
-                  {matchingAccounts.length ? matchingAccounts.map((account) => (
-                    <button key={account.id} type="button" className={`block w-full border-b border-line px-3 py-2.5 text-left text-sm last:border-0 hover:bg-canvas ${account.id === accountId ? 'bg-brand-soft' : ''}`}
-                      onClick={() => { setAccountId(account.id); setAccountSearch(`${account.kode} · ${account.nama}`); setAccountOpen(false) }}>
-                      <span className="block font-medium">{account.kode} · {account.nama}</span>
-                    </button>
-                  )) : <p className="p-3 text-sm text-ink/60">{accounts.length ? 'Akun tidak ditemukan.' : 'Belum ada akun beban aktif. Buat atau aktifkan akun beban di menu Akuntansi → Daftar Akun.'}</p>}
-                  <button type="button" className="sticky bottom-0 w-full border-t border-line bg-canvas px-3 py-2 text-sm text-ink/70" onClick={() => setAccountOpen(false)}><ChevronDown size={14} className="mr-1 inline" /> Tutup daftar</button>
-                </div>}
-              </div>
+              </>}
+
+              {maximumSupported && <>
+                <label className="text-sm font-medium">Batas Maksimum</label>
+                <div className="min-w-0">
+                  <label className="flex items-start gap-2 text-sm">
+                    <input type="checkbox" className="mt-1 h-4 w-4 shrink-0 accent-brand" checked={maximumSalaryEnabled} onChange={(e) => setMaximumSalaryEnabled(e.target.checked)} />
+                    <span>Ya. Dikenakan maksimum nilai Gaji (per Mar 2026, Rp {money(11086300)})</span>
+                  </label>
+                </div>
+              </>}
+
+              {accountRequired && <>
+                <label htmlFor="salary-account-search" className="self-start pt-2 text-sm font-medium">Akun Beban <span className="text-red-600">*</span></label>
+                <div className="relative min-w-0">
+                  <div className="relative">
+                    <input id="salary-account-search" className="input w-full pr-10" value={accountSearch}
+                      onChange={(e) => { setAccountSearch(e.target.value); setAccountId(''); setAccountOpen(true) }}
+                      onFocus={() => setAccountOpen(true)} maxLength={160} autoComplete="off" placeholder="Cari/Pilih Akun Perkiraan..." aria-expanded={accountOpen} aria-controls="salary-account-options" />
+                    <button type="button" className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-ink/70" aria-label="Cari akun beban" onClick={() => setAccountOpen((open) => !open)}><Search size={18} /></button>
+                  </div>
+                  {accountOpen && <div id="salary-account-options" className="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-line bg-white shadow-lg">
+                    {matchingAccounts.length ? matchingAccounts.map((account) => (
+                      <button key={account.id} type="button" className={`block w-full border-b border-line px-3 py-2.5 text-left text-sm last:border-0 hover:bg-canvas ${account.id === accountId ? 'bg-brand-soft' : ''}`}
+                        onClick={() => { setAccountId(account.id); setAccountSearch(`${account.kode} · ${account.nama}`); setAccountOpen(false) }}>
+                        <span className="block font-medium">{account.kode} · {account.nama}</span>
+                      </button>
+                    )) : <p className="p-3 text-sm text-ink/60">{accounts.length ? 'Akun tidak ditemukan.' : 'Belum ada akun beban aktif. Buat atau aktifkan akun beban di menu Akuntansi → Daftar Akun.'}</p>}
+                    <button type="button" className="sticky bottom-0 w-full border-t border-line bg-canvas px-3 py-2 text-sm text-ink/70" onClick={() => setAccountOpen(false)}><ChevronDown size={14} className="mr-1 inline" /> Tutup daftar</button>
+                  </div>}
+                </div>
+              </>}
             </div>
 
             <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4 accent-brand" checked={active} onChange={(e) => setActive(e.target.checked)} /> Aktif</label>
@@ -193,7 +276,7 @@ function SalaryItemForm({ companyId, item, accounts, onCancel, onSaved }: {
           </div>
           <div className="flex flex-wrap justify-end gap-2 border-t border-line px-5 py-4">
             <button type="button" className="btn" onClick={onCancel} disabled={busy}>Batal</button>
-            <button type="submit" className="btn btn-primary" disabled={busy || !name.trim() || !accountId}><Check size={16} /> {busy ? 'Menyimpan…' : 'Simpan'}</button>
+            <button type="submit" className="btn btn-primary" disabled={busy || !name.trim() || (accountRequired && !accountId) || (percentageRequired && !percentage.trim())}><Check size={16} /> {busy ? 'Menyimpan…' : 'Simpan'}</button>
           </div>
         </form>
       </section>
