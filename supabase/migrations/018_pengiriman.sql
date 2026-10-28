@@ -72,19 +72,7 @@ begin
   return sid;
 end $$;
 
-create or replace function public.company_shipping_method_delete(p_company uuid, p_shipping_method uuid) returns void
-language plpgsql security definer set search_path = public as $$
-begin
-  if not public.is_admin(p_company) then raise exception 'Hanya owner/admin perusahaan yang bisa menghapus pengiriman'; end if;
-  if exists (select 1 from public.pb_dokumen where company_id = p_company and shipping_method_id = p_shipping_method)
-     or exists (select 1 from public.pj_dokumen where company_id = p_company and shipping_method_id = p_shipping_method) then
-    raise exception 'Ekspedisi sudah dipakai pada transaksi. Nonaktifkan saja agar riwayat transaksi tetap terjaga.';
-  end if;
-  delete from public.company_shipping_methods where id = p_shipping_method and company_id = p_company;
-  if not found then raise exception 'Data pengiriman tidak ditemukan'; end if;
-end $$;
-
-grant execute on function public.company_shipping_method_save(jsonb), public.company_shipping_method_delete(uuid, uuid) to authenticated;
+grant execute on function public.company_shipping_method_save(jsonb) to authenticated;
 
 -- Optional carrier selection on purchase/sales documents.
 alter table public.pb_dokumen add column shipping_method_id uuid;
@@ -263,6 +251,21 @@ begin
   update public.pb_dokumen set status='diterima' where id=p_id;
   return fid;
 end $$;
+
+
+create or replace function public.company_shipping_method_delete(p_company uuid, p_shipping_method uuid) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin(p_company) then raise exception 'Hanya owner/admin perusahaan yang bisa menghapus pengiriman'; end if;
+  if exists (select 1 from public.pb_dokumen where company_id = p_company and shipping_method_id = p_shipping_method)
+     or exists (select 1 from public.pj_dokumen where company_id = p_company and shipping_method_id = p_shipping_method) then
+    raise exception 'Ekspedisi sudah dipakai pada transaksi. Nonaktifkan saja agar riwayat transaksi tetap terjaga.';
+  end if;
+  delete from public.company_shipping_methods where id = p_shipping_method and company_id = p_company;
+  if not found then raise exception 'Data pengiriman tidak ditemukan'; end if;
+end $$;
+
+grant execute on function public.company_shipping_method_save(jsonb), public.company_shipping_method_delete(uuid, uuid) to authenticated;
 
 grant execute on function public.pb_simpan_dokumen(jsonb), public.pj_simpan_dokumen(jsonb),
   public.pb_pesanan_ke_faktur(uuid), public.pj_penawaran_ke_faktur(uuid) to authenticated;
