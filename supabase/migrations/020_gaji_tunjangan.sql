@@ -21,7 +21,7 @@ create table public.company_salary_items (
     'Potongan Gaji (Tidak Mengurangi PPh)',
     'Pengurangan Gaji (Mengurangi PPh)',
     'Premi asuransi kesehatan dibayarkan pekerja',
-    'Iuran pensiunan THT/JHT dibayarkan pekerja'
+    'Iuran Pensiun/THT/JHT dibayarkan Pekerja'
   )),
   pay_type text not null check (pay_type in ('Bulanan', 'Non bulanan/setahun sekali')),
   percentage_of_salary numeric(8,4) check (percentage_of_salary is null or (percentage_of_salary >= 0 and percentage_of_salary <= 100)),
@@ -63,7 +63,7 @@ language sql immutable as $$
     'Premi asuransi kesehatan yang dibayarkan pemberi kerja',
     'Tunjangan Iuran Pensiun/THT/JHT dibayarkan Pemberi Kerja',
     'Premi asuransi kesehatan dibayarkan pekerja',
-    'Iuran pensiunan THT/JHT dibayarkan pekerja'
+    'Iuran Pensiun/THT/JHT dibayarkan Pekerja'
   )
 $$;
 
@@ -110,7 +110,7 @@ begin
     'Potongan Gaji (Tidak Mengurangi PPh)',
     'Pengurangan Gaji (Mengurangi PPh)',
     'Premi asuransi kesehatan dibayarkan pekerja',
-    'Iuran pensiunan THT/JHT dibayarkan pekerja'
+    'Iuran Pensiun/THT/JHT dibayarkan Pekerja'
   ) then raise exception 'Tipe gaji/tunjangan tidak valid'; end if;
 
   if not (pay_value = any(public.company_salary_item_pay_options(type_value))) then
@@ -137,7 +137,7 @@ begin
   ) then raise exception 'Akun beban tidak aktif atau bukan milik perusahaan ini'; end if;
 
   -- Accurate shows the maximum-salary option for this pension-contribution type.
-  if type_value <> 'Iuran pensiunan THT/JHT dibayarkan pekerja' then
+  if type_value <> 'Iuran Pensiun/THT/JHT dibayarkan Pekerja' then
     maximum_value := false;
   end if;
 
