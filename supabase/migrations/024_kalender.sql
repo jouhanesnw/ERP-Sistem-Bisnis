@@ -31,7 +31,7 @@ create or replace function public.company_calendar_user_in_branch_ids(
 ) returns boolean
 language sql stable security definer set search_path = public
 as $fn$
-  select p_user_id = auth.uid() and exists (
+  select p_user_id = auth.uid() and public.is_member(p_company_id) and exists (
     select 1
     from public.company_employees e
     join auth.users u on lower(trim(u.email)) = lower(trim(e.email))
