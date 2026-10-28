@@ -106,10 +106,13 @@ export default function TransactionFavoritesManager({ companyId, initial, initia
             {visible.map((row) => {
               const Icon = FORM_ICON[row.favorite_type] ?? Package
               const itemCount = Array.isArray(row.payload?.items) ? row.payload.items.length : Array.isArray(row.payload?.journal_lines) ? row.payload.journal_lines.length : 0
+              const detailSummary = row.payload?.jumlah !== undefined
+                ? `Nominal ${new Intl.NumberFormat('id-ID').format(Number(row.payload.jumlah) || 0)}`
+                : `${itemCount} baris detail`
               return <tr key={row.id} className="border-b border-line last:border-0 align-top">
                 <td className="p-3"><div className="font-medium">{row.name}</div></td>
                 <td className="p-3"><span className="inline-flex items-center gap-2"><Icon size={15} className="text-ink/45" />{favoriteTypeLabel(row.favorite_type)}</span></td>
-                <td className="p-3">{itemCount} baris detail{row.payload?.currency_code ? ` · ${row.payload.currency_code}` : ''}</td>
+                <td className="p-3">{detailSummary}{row.payload?.currency_code ? ` · ${row.payload.currency_code}` : ''}</td>
                 <td className="p-3">{row.visibility === 'all_members' ? 'Semua pengguna' : 'Pribadi'}</td>
                 <td className="whitespace-nowrap p-3">{row.created_at ? new Date(row.created_at).toLocaleDateString('id-ID') : '—'}</td>
                 <td className="whitespace-nowrap p-3 text-right"><div className="flex justify-end gap-2">
