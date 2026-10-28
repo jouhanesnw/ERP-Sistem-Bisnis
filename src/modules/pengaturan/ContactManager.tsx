@@ -126,7 +126,7 @@ export default function ContactManager({ initial, initialError, availableKinds }
                     </td>
                     <td className="p-3"><span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${KIND_STYLE[item.kind]}`}>{item.kind}</span></td>
                     <td className="p-3">
-                      {item.phone ? <a className="inline-flex items-center gap-1.5 whitespace-nowrap hover:text-brand" href={`tel:${item.phone.replace(/[^+\\d]/g, '')}`}><Phone size={13} />{item.phone}</a> : <span className="text-ink/35">—</span>}
+                      {item.phone ? <a className="inline-flex items-center gap-1.5 whitespace-nowrap hover:text-brand" href={`tel:${item.phone.replace(/[^\d+]/g, '')}`}><Phone size={13} />{item.phone}</a> : <span className="text-ink/35">—</span>}
                     </td>
                     <td className="p-3">
                       {item.email ? <a className="inline-flex max-w-[220px] items-center gap-1.5 break-all hover:text-brand" href={`mailto:${item.email}`}><Mail size={13} />{item.email}</a> : <span className="text-ink/35">—</span>}
