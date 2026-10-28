@@ -190,6 +190,31 @@ create trigger calendar_sync_purchase_document
 after insert or update or delete on public.pb_dokumen
 for each row execute function public.calendar_sync_document_schedule();
 
+-- Backfill open invoices and outstanding purchase orders already in the database.
+-- Fully paid invoices and received/cancelled orders are deliberately excluded.
+update public.pj_dokumen d
+set catatan = d.catatan
+where d.jenis = 'faktur'
+  and d.status = 'terbit'
+  and d.batas_tanggal is not null
+  and (
+    select round(coalesce(sum(i.qty * i.harga), 0) * (1 + coalesce(d.ppn_persen, 0) / 100), 2)
+    from public.pj_dokumen_item i where i.dokumen_id = d.id
+  ) > coalesce((select sum(p.jumlah) from public.pj_pembayaran p where p.dokumen_id = d.id), 0);
+
+update public.pb_dokumen d
+set catatan = d.catatan
+where d.batas_tanggal is not null
+  and ((d.jenis = 'faktur' and d.status = 'terbit')
+    or (d.jenis = 'pesanan' and d.status = 'dipesan'))
+  and (
+    d.jenis = 'pesanan'
+    or (
+      select round(coalesce(sum(i.qty * i.harga), 0) * (1 + coalesce(d.ppn_persen, 0) / 100), 2)
+      from public.pb_dokumen_item i where i.dokumen_id = d.id
+    ) > coalesce((select sum(p.jumlah) from public.pb_pembayaran p where p.dokumen_id = d.id), 0)
+  );
+
 -- When an invoice is settled completely, remove its outstanding due-date reminder.
 -- Partial payments keep the source event. Deleting a payment re-runs document sync.
 create or replace function public.calendar_refresh_invoice_after_payment()
