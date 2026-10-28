@@ -27,7 +27,7 @@ export default async function GajiTunjanganPage() {
   const accountMap = new Map(accounts.map((account) => [account.id, account]))
   const items = ((itemsResult.data ?? []) as SalaryItem[]).map((item) => ({
     ...item,
-    account: accountMap.get(item.account_id) ?? null,
+    account: item.account_id ? accountMap.get(item.account_id) ?? null : null,
   }))
 
   return (
