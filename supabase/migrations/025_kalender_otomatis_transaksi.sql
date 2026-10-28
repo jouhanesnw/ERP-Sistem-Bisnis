@@ -35,10 +35,7 @@ alter table public.company_calendar_events
       'Jatuh Tempo Piutang',
       'Transaksi Terjadwal',
       'Tukar Faktur'
-    )),
-  add column source_table text,
-  add column source_id uuid,
-  add column source_url text;
+    ));
 
 alter table public.company_calendar_events
   drop constraint if exists company_calendar_events_reminder_status_check;
@@ -223,7 +220,7 @@ begin
     if total_value is not null and paid_value >= total_value then
       delete from public.company_calendar_events
         where company_id = cid and source_table = 'pj_dokumen' and source_id = doc_id and event_type = 'Jatuh Tempo Piutang';
-    else
+    elsif not exists (select 1 from public.company_calendar_events e where e.company_id = cid and e.source_table = 'pj_dokumen' and e.source_id = doc_id and e.event_type = 'Jatuh Tempo Piutang') then
       update public.pj_dokumen set catatan = catatan where id = doc_id and company_id = cid;
     end if;
   elsif TG_TABLE_NAME = 'pb_pembayaran' then
@@ -236,7 +233,7 @@ begin
     if total_value is not null and paid_value >= total_value then
       delete from public.company_calendar_events
         where company_id = cid and source_table = 'pb_dokumen' and source_id = doc_id and event_type = 'Jatuh Tempo Hutang';
-    else
+    elsif not exists (select 1 from public.company_calendar_events e where e.company_id = cid and e.source_table = 'pb_dokumen' and e.source_id = doc_id and e.event_type = 'Jatuh Tempo Hutang') then
       update public.pb_dokumen set catatan = catatan where id = doc_id and company_id = cid;
     end if;
   end if;
