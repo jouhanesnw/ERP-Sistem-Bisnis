@@ -43,6 +43,19 @@ as $fn$
 $fn$;
 grant execute on function public.company_calendar_user_in_branch_ids(uuid, uuid, uuid[]) to authenticated;
 
+create or replace function public.company_calendar_current_user_branch_ids(p_company_id uuid)
+returns uuid[]
+language sql stable security definer set search_path = public
+as $fn$
+  select coalesce(array_agg(distinct e.branch_id) filter (where e.branch_id is not null), '{}'::uuid[])
+  from public.company_employees e
+  join auth.users u on lower(trim(u.email)) = lower(trim(e.email))
+  where e.company_id = p_company_id and e.active = true
+    and e.branch_id is not null and u.id = auth.uid()
+    and public.is_member(p_company_id);
+$fn$;
+grant execute on function public.company_calendar_current_user_branch_ids(uuid) to authenticated;
+
 alter table public.company_calendars enable row level security;
 grant select, insert, update, delete on public.company_calendars to authenticated;
 
