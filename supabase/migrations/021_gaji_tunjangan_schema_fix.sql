@@ -18,6 +18,8 @@ alter table public.company_salary_items
   drop constraint if exists company_salary_items_item_type_check;
 alter table public.company_salary_items
   drop constraint if exists company_salary_items_pay_type_check;
+alter table public.company_salary_items
+  drop constraint if exists company_salary_items_percentage_check;
 
 -- Kompatibilitas data yang mungkin sudah disimpan memakai label versi sebelumnya.
 update public.company_salary_items
@@ -59,7 +61,7 @@ alter table public.company_salary_items
   add constraint company_salary_items_percentage_check
   check (percentage_of_salary is null or (percentage_of_salary >= 0 and percentage_of_salary <= 100));
 
-create index if not exists company_salary_items_name_uq
+create unique index if not exists company_salary_items_name_uq
   on public.company_salary_items(company_id, lower(trim(name)));
 create index if not exists company_salary_items_company_active_idx
   on public.company_salary_items(company_id, active, name);
