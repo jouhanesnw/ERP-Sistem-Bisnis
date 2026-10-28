@@ -59,5 +59,5 @@ Atur interval setidaknya setiap menit jika ingin pengingat mendekati jam yang di
 - Pengingat akan berstatus `pending` sampai dispatcher dijadwalkan dan konfigurasi provider lengkap.
 - Jika kanal yang dipilih gagal mengirim, status akan menjadi `failed` atau `not_configured`, dan alasannya ditampilkan di daftar event. Perbaiki konfigurasi lalu simpan ulang event untuk mencoba lagi.
 - `Add file/link` saat ini menyimpan URL. Upload berkas langsung belum memakai object storage.
-- Hak user saat ini diatur dengan daftar pengguna. Kontrol per cabang ditampilkan sebagai referensi saja sampai identitas akun dipetakan ke cabang secara tegas.
+- Hak dapat diberikan per pengguna atau per cabang. Hak cabang membutuhkan data Karyawan aktif dengan alamat email yang sama persis (tanpa membedakan huruf besar/kecil) dengan email akun login; pastikan email dan cabang karyawan sudah benar.
 - Uji pertama dengan satu event beberapa menit ke depan dan satu penerima uji sebelum menyalakan pengiriman ke pengguna lain.
