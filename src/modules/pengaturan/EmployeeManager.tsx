@@ -111,8 +111,24 @@ function formFromEmployee(employee: Employee): EmployeeFormState {
     bank_account_name: employee.bank_account_name ?? '', active: employee.active ?? true,
   }
 }
-function money(value: number | string | null | undefined) {
-  return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(Number(value ?? 0))
+type FieldProps = { label: string; children: React.ReactNode; required?: boolean; className?: string }
+
+function Field({ label, children, required = false, className = '' }: FieldProps) {
+  return (
+    <div className={`grid min-w-0 gap-1.5 sm:grid-cols-[minmax(145px,0.7fr)_minmax(0,1.3fr)] sm:items-center ${className}`}>
+      <div className="text-sm font-medium">{label}{required && <span className="ml-1 text-red-600">*</span>}</div>
+      <div className="min-w-0">{children}</div>
+    </div>
+  )
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mb-4 space-y-1">
+      <h3 className="text-xl font-medium text-brand">{children}</h3>
+      <div className="h-px bg-line" />
+    </div>
+  )
 }
 
 export default function EmployeeManager({ companyId, initial, branches, departments, initialError }: {
@@ -341,19 +357,6 @@ function EmployeeForm({ companyId, employee, branches, departments, onCancel, on
       department: chosenDepartment,
     })
   }
-
-  const Field = ({ label, children, required = false, className = '' }: { label: string; children: React.ReactNode; required?: boolean; className?: string }) => (
-    <div className={`grid min-w-0 gap-1.5 sm:grid-cols-[minmax(145px,0.7fr)_minmax(0,1.3fr)] sm:items-center ${className}`}>
-      <div className="text-sm font-medium">{label}{required && <span className="ml-1 text-red-600">*</span>}</div>
-      <div className="min-w-0">{children}</div>
-    </div>
-  )
-  const SectionTitle = ({ children }: { children: React.ReactNode }) => (
-    <div className="mb-4 space-y-1">
-      <h3 className="text-xl font-medium text-brand">{children}</h3>
-      <div className="h-px bg-line" />
-    </div>
-  )
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-2 sm:p-5" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) onCancel() }}>
