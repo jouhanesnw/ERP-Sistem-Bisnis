@@ -331,3 +331,62 @@ $install_global$;
 
 comment on table public.company_activity_logs is
 'Append-only audit trail for changes to public company data. UPDATE entries retain exact old/new values for each changed column, including punctuation-only changes.';
+
+
+-- Explicit UI activity events (for example, opening pages or exporting reports).
+-- Database mutations are captured by row triggers independently of this function.
+create or replace function public.company_activity_log_ui(
+  p_company_id uuid,
+  p_action text,
+  p_path text
+) returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  actor uuid := auth.uid();
+  actor_display text;
+  actor_mail text;
+  path_value text := left(coalesce(p_path, ''), 300);
+  module_value text;
+  action_value text := upper(coalesce(p_action, 'VIEW'));
+begin
+  if actor is null then raise exception 'Login diperlukan untuk mencatat aktivitas UI'; end if;
+  if not public.is_member(p_company_id) then raise exception 'Bukan anggota perusahaan'; end if;
+  if action_value not in ('VIEW','EXPORT') then raise exception 'Jenis aktivitas UI tidak diizinkan'; end if;
+  if path_value = '' or left(path_value, 1) <> '/' or left(path_value, 2) = '//' then
+    raise exception 'Alamat halaman tidak valid';
+  end if;
+
+  module_value := case
+    when path_value like '/pengaturan%' then 'Pengaturan'
+    when path_value like '/penjualan%' then 'Penjualan'
+    when path_value like '/pembelian%' then 'Pembelian'
+    when path_value like '/kas%' then 'Kas & Bank'
+    when path_value like '/produk%' then 'Persediaan'
+    when path_value like '/akuntansi%' then 'Akuntansi'
+    when path_value like '/kendaraan%' then 'Kendaraan'
+    when path_value like '/reminder%' then 'Reminder'
+    when path_value like '/dashboard%' then 'Dashboard'
+    else 'Lainnya'
+  end;
+
+  select p.full_name, p.email into actor_display, actor_mail
+    from public.profiles p where p.id = actor;
+  actor_display := coalesce(nullif(actor_display,''), nullif(actor_mail,''), actor::text);
+
+  insert into public.company_activity_logs(
+    company_id, actor_id, actor_name, actor_email, actor_type, action, module_name,
+    table_name, record_key, record_label, summary, changed_fields, changes, new_data
+  ) values (
+    p_company_id, actor, actor_display, actor_mail, 'user', action_value, module_value,
+    'ui_navigation', jsonb_build_object('path', path_value), path_value,
+    case action_value when 'VIEW' then 'Membuka halaman ' || path_value else 'Mengekspor dari halaman ' || path_value end,
+    array['path']::text[],
+    jsonb_build_array(jsonb_build_object('field','path','change_type','added','before',null,'after',to_jsonb(path_value))),
+    jsonb_build_object('path', path_value)
+  );
+end
+$fn$;
+grant execute on function public.company_activity_log_ui(uuid, text, text) to authenticated;
