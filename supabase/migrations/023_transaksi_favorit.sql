@@ -6,7 +6,8 @@ create table public.company_transaction_favorites (
   id uuid primary key default gen_random_uuid(),
   company_id uuid not null references public.companies(id) on delete cascade,
   favorite_type text not null check (favorite_type in (
-    'sales_quote', 'sales_invoice', 'purchase_order', 'purchase_invoice'
+    'sales_quote', 'sales_invoice', 'purchase_order', 'purchase_invoice',
+    'kas_in', 'kas_out', 'kas_transfer', 'journal_manual'
   )),
   name text not null check (length(trim(name)) > 0),
   visibility text not null default 'all_members' check (visibility in ('all_members', 'private')),
@@ -63,7 +64,7 @@ begin
   if cid is null or not public.is_member(cid) then raise exception 'Tidak punya akses ke perusahaan ini'; end if;
   if actor is null then raise exception 'Sesi login sudah berakhir'; end if;
   if name_value = '' then raise exception 'Nama transaksi favorit wajib diisi'; end if;
-  if type_value not in ('sales_quote','sales_invoice','purchase_order','purchase_invoice') then
+  if type_value not in ('sales_quote','sales_invoice','purchase_order','purchase_invoice','kas_in','kas_out','kas_transfer','journal_manual') then
     raise exception 'Jenis transaksi favorit belum didukung';
   end if;
   if visibility_value not in ('all_members','private') then raise exception 'Pilihan akses tidak valid'; end if;
