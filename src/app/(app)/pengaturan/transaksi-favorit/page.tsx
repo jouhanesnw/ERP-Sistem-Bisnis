@@ -15,9 +15,14 @@ export default async function TransactionFavoritesPage() {
   const admin = ctx.active.role !== 'member'
   const canSales = admin || can(ctx.perms, 'penjualan')
   const canPurchase = admin || can(ctx.perms, 'pembelian')
-  const visibleRows = ((data ?? []) as TransactionFavorite[]).filter((row) =>
-    row.favorite_type.startsWith('sales_') ? canSales : canPurchase
-  )
+  const canCash = admin || can(ctx.perms, 'kas')
+  const canJournal = admin || can(ctx.perms, 'akuntansi')
+  const visibleRows = ((data ?? []) as TransactionFavorite[]).filter((row) => {
+    if (row.favorite_type.startsWith('sales_')) return canSales
+    if (row.favorite_type.startsWith('purchase_')) return canPurchase
+    if (row.favorite_type.startsWith('kas_')) return canCash
+    return canJournal
+  })
 
   return <TransactionFavoritesManager companyId={ctx.active.companyId} initial={visibleRows} initialError={error?.message ?? null} />
 }
