@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Building2, Check, Pencil, Plus, Search, Trash2, Truck, X } from 'lucide-react'
+import { Building2, Check, Pencil, Plus, Trash2, Truck, X } from 'lucide-react'
 import { supabaseBrowser } from '@/lib/supabase/client'
 
 export type ShippingMethod = {
