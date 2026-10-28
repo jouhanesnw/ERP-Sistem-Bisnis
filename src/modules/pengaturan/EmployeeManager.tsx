@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, ChevronDown, Pencil, Plus, Search, Trash2, UserRound, X } from 'lucide-react'
+import { Check, ChevronDown, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import type {
   Employee,
@@ -233,7 +233,7 @@ function EmployeeForm({ companyId, employee, branches, departments, onCancel, on
   const [error, setError] = useState<string | null>(null)
   const [bankSearch, setBankSearch] = useState(employee?.bank_name ?? '')
   const [bankOpen, setBankOpen] = useState(false)
-  const set = <K extends keyof EmployeeFormState>(key: K, value: EmployeeFormState[K]) => setForm((current) => ({ ...current, [key]: value }))
+  const set = <K extends keyof EmployeeFormState,>(key: K, value: EmployeeFormState[K]) => setForm((current) => ({ ...current, [key]: value }))
   const matchingBanks = BANK_OPTIONS.filter((bank) => bank.toLocaleLowerCase('id').includes(bankSearch.toLocaleLowerCase('id')))
 
   async function submit(e: React.FormEvent) {
