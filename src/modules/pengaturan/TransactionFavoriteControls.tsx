@@ -15,6 +15,12 @@ export type FavoritePayload = {
   catatan?: string
   no_referensi?: string
   items?: { deskripsi: string; qty: number | string; harga: number | string; produk_id?: string | null }[]
+  rekening_id?: string
+  rekening_tujuan_id?: string | null
+  kategori_id?: string | null
+  jumlah?: number | string
+  keterangan?: string
+  journal_lines?: { akun_id: string; debit: number | string; kredit: number | string; keterangan: string }[]
 }
 
 export type TransactionFavorite = {
@@ -33,6 +39,10 @@ const FAVORITE_LABELS: Record<string, string> = {
   sales_invoice: 'Faktur Penjualan',
   purchase_order: 'Pesanan Pembelian',
   purchase_invoice: 'Faktur Pembelian',
+  kas_in: 'Kas Masuk',
+  kas_out: 'Kas Keluar',
+  kas_transfer: 'Transfer Antar Rekening',
+  journal_manual: 'Jurnal Umum',
 }
 
 export function favoriteTypeLabel(type: string) {
