@@ -220,7 +220,7 @@ function BranchForm({ companyId, branch, members, onCancel, onSaved }: {
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-3 sm:p-6" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) onCancel() }}>
-      <section role="dialog" aria-modal="true" aria-labelledby="branch-form-title" className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-line bg-panel shadow-2xl">
+      <section role="dialog" aria-modal="true" aria-labelledby="branch-form-title" style={{ width: "min(768px, calc(100vw - 24px))", maxWidth: "calc(100vw - 24px)", maxHeight: "92vh", backgroundColor: "#ffffff" }} className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-line shadow-2xl">
         <div className="flex items-start gap-3 border-b border-line px-5 py-4">
           <div className="min-w-0 flex-1">
             <h2 id="branch-form-title" className="text-lg font-semibold">{branch ? 'Ubah cabang' : 'Tambah cabang baru'}</h2>
@@ -260,7 +260,7 @@ function BranchForm({ companyId, branch, members, onCancel, onSaved }: {
                     <button type="button" className="rounded p-1 text-ink/50 hover:bg-black/5" onClick={() => setPickerOpen((open) => !open)} aria-label="Tampilkan daftar pengguna"><ChevronDown size={16} /></button>
                   </div>
                   {pickerOpen && (
-                    <div className="absolute left-0 top-full z-20 mt-2 max-h-56 w-full min-w-[260px] overflow-y-auto rounded-lg border border-line bg-panel py-1 shadow-xl">
+                    <div className="absolute left-0 top-full z-20 mt-2 max-h-56 w-full min-w-[260px] overflow-y-auto rounded-lg border border-line bg-white py-1 shadow-xl">
                       {candidates.length ? candidates.map((member) => (
                         <button type="button" key={member.id} className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-canvas" onClick={() => selectMember(member)}>
                           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-soft text-xs font-semibold text-brand-dark">{(member.full_name || member.email || '?').slice(0, 1).toUpperCase()}</span>
