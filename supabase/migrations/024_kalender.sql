@@ -57,8 +57,11 @@ create table public.company_calendar_events (
   attachment_links jsonb not null default '[]'::jsonb check (jsonb_typeof(attachment_links) = 'array'),
   reminder_channels text[] not null default '{}'::text[],
   reminder_recipients jsonb not null default '{}'::jsonb check (jsonb_typeof(reminder_recipients) = 'object'),
-  reminder_status text not null default 'pending' check (reminder_status in ('pending','sent','failed','not_configured')),
+  reminder_status text not null default 'pending' check (reminder_status in ('pending','sending','sent','failed','not_configured')),
+  reminder_attempts integer not null default 0 check (reminder_attempts >= 0),
+  reminder_last_error text,
   reminder_sent_at timestamptz,
+  repeat_processed_at timestamptz,
   created_by uuid not null references auth.users(id) on delete cascade,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -70,6 +73,7 @@ create table public.company_calendar_events (
 
 create index company_calendar_events_calendar_start_idx on public.company_calendar_events(calendar_id, start_at);
 create index company_calendar_events_reminder_idx on public.company_calendar_events(reminder_at) where reminder_at is not null and reminder_status = 'pending';
+create index company_calendar_events_repeat_idx on public.company_calendar_events(start_at) where repeat_rule <> 'none' and repeat_processed_at is null;
 alter table public.company_calendar_events enable row level security;
 grant select, insert, update, delete on public.company_calendar_events to authenticated;
 
