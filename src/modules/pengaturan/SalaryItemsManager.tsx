@@ -227,9 +227,11 @@ function SalaryItemForm({ companyId, item, accounts, onCancel, onSaved }: {
               </select>
 
               <label htmlFor="salary-pay-type" className="text-sm font-medium">Bayar/Potong</label>
-              <select id="salary-pay-type" className="input w-full" value={payType} onChange={(e) => setPayType(e.target.value as SalaryPayType)}>
-                {payOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-              </select>
+              {payOptions.length === 1
+                ? <input id="salary-pay-type" className="input w-full bg-slate-50 text-ink/65" value={payOptions[0]} readOnly aria-readonly="true" />
+                : <select id="salary-pay-type" className="input w-full" value={payType} onChange={(e) => setPayType(e.target.value as SalaryPayType)}>
+                    {payOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                  </select>}
 
               {percentageRequired && <>
                 <label htmlFor="salary-percentage" className="text-sm font-medium">% dari Gaji <span className="text-red-600">*</span></label>
