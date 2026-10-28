@@ -117,7 +117,7 @@ export default function CalendarManager({
     setEditingEvent(null); setSelectedDay(date); setEventOpen(true); setNotice(null); setError(null)
   }
   function openEditEvent(item: CalendarEvent) {
-    if (!canEditEvents) return
+    if (!canEditEvents || item.source_table) return
     setEditingEvent(item); setSelectedDay(safeDate(item.start_at)); setEventOpen(true); setNotice(null); setError(null)
   }
   async function deleteEvent(item: CalendarEvent) {
@@ -180,9 +180,9 @@ export default function CalendarManager({
     }
     const query = editingEvent
       ? await sb.from('company_calendar_events').update(payload).eq('id', editingEvent.id).eq('company_id', companyId)
-        .select('id, company_id, calendar_id, title, description, start_at, due_at, reminder_at, repeat_rule, attachment_links, reminder_channels, reminder_recipients, reminder_status, reminder_sent_at, reminder_last_error, reminder_attempts, created_by').single()
+        .select('id, company_id, calendar_id, title, event_type, description, start_at, due_at, reminder_at, repeat_rule, attachment_links, reminder_channels, reminder_recipients, reminder_status, reminder_sent_at, reminder_last_error, reminder_attempts, source_table, source_id, source_url, created_by').single()
       : await sb.from('company_calendar_events').insert(payload)
-        .select('id, company_id, calendar_id, title, description, start_at, due_at, reminder_at, repeat_rule, attachment_links, reminder_channels, reminder_recipients, reminder_status, created_by').single()
+        .select('id, company_id, calendar_id, title, event_type, description, start_at, due_at, reminder_at, repeat_rule, attachment_links, reminder_channels, reminder_recipients, reminder_status, source_table, source_id, source_url, created_by').single()
     setBusy(false)
     if (query.error) { setError(query.error.message); return }
     const saved = query.data as CalendarEvent
@@ -331,8 +331,9 @@ function EventModal({ initial, selectedDay, busy, defaultReminder, onClose, onSa
   const [startAt, setStartAt] = useState(initial ? localInput(safeDate(initial.start_at)) : localInput(defaultStart))
   const [dueEnabled, setDueEnabled] = useState(!!initial?.due_at)
   const [dueAt, setDueAt] = useState(initial?.due_at ? localInput(safeDate(initial.due_at)) : '')
-  const [reminderEnabled, setReminderEnabled] = useState(!!initial?.reminder_at)
-  const [reminderAt, setReminderAt] = useState(initial?.reminder_at ? localInput(safeDate(initial.reminder_at)) : '')
+  const defaultReminderAt = localInput(new Date(new Date(startAt).getTime() - (defaultReminder.minutes || 0) * 60000))
+  const [reminderEnabled, setReminderEnabled] = useState(initial ? !!initial.reminder_at : (defaultReminder.channels?.length ?? 0) > 0)
+  const [reminderAt, setReminderAt] = useState(initial?.reminder_at ? localInput(safeDate(initial.reminder_at)) : ((defaultReminder.channels?.length ?? 0) > 0 ? defaultReminderAt : ''))
   const [repeatRule, setRepeatRule] = useState(initial?.repeat_rule ?? 'none')
   const [channels, setChannels] = useState<string[]>(initial?.reminder_channels ?? defaultReminder.channels ?? [])
   const [email, setEmail] = useState(initial?.reminder_recipients?.email ?? defaultReminder.recipients.email ?? '')
