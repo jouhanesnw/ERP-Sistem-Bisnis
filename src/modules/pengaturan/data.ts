@@ -1,6 +1,7 @@
 import { supabaseServer } from '@/lib/supabase/server'
 import type { CurrencyOption } from './currencies'
 import type { ShippingMethod } from './shipping'
+import type { ShippingTerm } from './shippingTerms'
 
 export type ActiveCurrency = CurrencyOption & { is_default: boolean }
 
@@ -23,4 +24,14 @@ export async function loadShippingMethods(companyId: string): Promise<ShippingMe
     .order('name')
   if (error) return []
   return (data ?? []) as ShippingMethod[]
+}
+
+export async function loadShippingTerms(companyId: string): Promise<ShippingTerm[]> {
+  const { data, error } = await supabaseServer()
+    .from('company_shipping_terms')
+    .select('id, company_id, name, description, active, created_at')
+    .eq('company_id', companyId)
+    .order('name')
+  if (error) return []
+  return (data ?? []) as ShippingTerm[]
 }
