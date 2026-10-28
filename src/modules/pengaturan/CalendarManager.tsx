@@ -114,6 +114,7 @@ export default function CalendarManager({
     setEditingEvent(null); setSelectedDay(date); setEventOpen(true); setNotice(null); setError(null)
   }
   function openEditEvent(item: CalendarEvent) {
+    if (!canEditEvents) return
     setEditingEvent(item); setSelectedDay(safeDate(item.start_at)); setEventOpen(true); setNotice(null); setError(null)
   }
   async function deleteEvent(item: CalendarEvent) {
@@ -279,7 +280,7 @@ export default function CalendarManager({
             </div>
             {visibleEvents.length ? <div className="divide-y divide-line">{visibleEvents.map((item) => <article key={item.id} className="flex flex-wrap items-center gap-3 p-3 sm:p-4">
               <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-lg bg-brand-soft text-brand-dark"><span className="text-[10px] uppercase">{fmtDate(safeDate(item.start_at), { month: 'short' })}</span><span className="text-lg font-semibold leading-none">{safeDate(item.start_at).getDate()}</span></div>
-              <div className="min-w-0 flex-1"><p className="font-medium">{item.title}</p><p className="mt-0.5 text-xs text-ink/55">{fmtDate(safeDate(item.start_at), { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })} · {fmtDate(safeDate(item.start_at), { hour: '2-digit', minute: '2-digit' })}</p>{item.description && <p className="mt-1 line-clamp-2 text-sm text-ink/60">{item.description}</p>}<div className="mt-1 flex flex-wrap gap-2 text-xs text-ink/50">{item.due_at && <span>Jatuh tempo: {fmtDate(safeDate(item.due_at), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}{item.reminder_at && <span className="inline-flex items-center gap-1"><Bell size={12} /> Pengingat: {fmtDate(safeDate(item.reminder_at), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}{item.reminder_at && item.reminder_channels?.length > 0 && <span className={`rounded-full px-2 py-0.5 ${item.reminder_status === 'sent' ? 'bg-emerald-50 text-emerald-700' : item.reminder_status === 'failed' ? 'bg-red-50 text-red-700' : item.reminder_status === 'not_configured' ? 'bg-amber-50 text-amber-800' : 'bg-canvas text-ink/60'}`}>{item.reminder_status === 'sent' ? 'Pengingat terkirim' : item.reminder_status === 'failed' ? 'Pengingat gagal' : item.reminder_status === 'not_configured' ? 'Pengingat belum dikonfigurasi' : item.reminder_status === 'sending' ? 'Pengingat sedang dikirim' : 'Pengingat menunggu'}</span>}{item.reminder_last_error && <span className="basis-full text-xs text-red-600">{item.reminder_last_error}</span>}{item.repeat_rule !== 'none' && <span className="inline-flex items-center gap-1"><Repeat2 size={12} /> {REPEAT_OPTIONS.find((x) => x.value === item.repeat_rule)?.label}</span>}</div></div>
+              <div className="min-w-0 flex-1"><p className="font-medium">{item.title}</p><p className="mt-0.5 text-xs text-ink/55">{fmtDate(safeDate(item.start_at), { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })} · {fmtDate(safeDate(item.start_at), { hour: '2-digit', minute: '2-digit' })}</p>{item.description && <p className="mt-1 line-clamp-2 text-sm text-ink/60">{item.description}</p>}<div className="mt-1 flex flex-wrap gap-2 text-xs text-ink/50">{item.due_at && <span>Jatuh tempo: {fmtDate(safeDate(item.due_at), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}{item.reminder_at && <span className="inline-flex items-center gap-1"><Bell size={12} /> Pengingat: {fmtDate(safeDate(item.reminder_at), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}{item.reminder_at && <span className={`rounded-full px-2 py-0.5 ${item.reminder_status === 'sent' ? 'bg-emerald-50 text-emerald-700' : item.reminder_status === 'failed' ? 'bg-red-50 text-red-700' : item.reminder_status === 'not_configured' ? 'bg-amber-50 text-amber-800' : 'bg-canvas text-ink/60'}`}>{item.reminder_status === 'sent' ? 'Pengingat terkirim' : item.reminder_status === 'failed' ? 'Pengingat gagal' : item.reminder_status === 'not_configured' ? 'Pengingat belum dikonfigurasi' : item.reminder_status === 'sending' ? 'Pengingat sedang dikirim' : 'Pengingat menunggu'}</span>}{item.reminder_last_error && <span className="basis-full text-xs text-red-600">{item.reminder_last_error}</span>}{item.repeat_rule !== 'none' && <span className="inline-flex items-center gap-1"><Repeat2 size={12} /> {REPEAT_OPTIONS.find((x) => x.value === item.repeat_rule)?.label}</span>}</div></div>
               <div className="flex items-center gap-1">{item.attachment_links?.length > 0 && <a className="btn-icon" href={item.attachment_links[0].url} target="_blank" rel="noreferrer" aria-label="Buka lampiran atau link"><Link2 size={16} /></a>}{canEditEvents && <button className="btn-icon" onClick={() => openEditEvent(item)} aria-label="Ubah event"><Pencil size={16} /></button>}{canEditEvents && <button className="btn-icon text-red-600" onClick={() => deleteEvent(item)} aria-label="Hapus event"><Trash2 size={16} /></button>}</div>
             </article>)}</div> : <div className="p-8 text-center text-sm text-ink/55">Belum ada event di kalender ini. Tambahkan kegiatan atau pengingat pertama.</div>}
           </section>
@@ -357,7 +358,18 @@ function EventModal({ initial, selectedDay, busy, onClose, onSave }: {
       reminder_recipients: { email: email.trim() || undefined, whatsapp: whatsapp.trim() || undefined, telegram_chat_id: telegram.trim() || undefined },
     })
   }
-  const quickOptions = [{ value: 'later', label: 'Later today' }, { value: 'tomorrow', label: 'Tomorrow' }, { value: 'next_week', label: 'Next Week' }, { value: 'pick', label: 'Pick a date' }]
+  const nowForQuickOptions = new Date()
+  const laterToday = new Date(nowForQuickOptions)
+  laterToday.setHours(laterToday.getHours() + 1, 0, 0, 0)
+  if (laterToday.getHours() < 9) laterToday.setHours(9, 0, 0, 0)
+  const tomorrow = addDays(startOfDay(nowForQuickOptions), 1); tomorrow.setHours(9, 0, 0, 0)
+  const nextWeek = addDays(startOfDay(nowForQuickOptions), 7); nextWeek.setHours(9, 0, 0, 0)
+  const quickOptions = [
+    { value: 'later', label: `Later today · ${fmtDate(laterToday, { hour: '2-digit', minute: '2-digit' })}` },
+    { value: 'tomorrow', label: `Tomorrow · ${fmtDate(tomorrow, { weekday: 'short', day: 'numeric', month: 'short' })}, ${fmtDate(tomorrow, { hour: '2-digit', minute: '2-digit' })}` },
+    { value: 'next_week', label: `Next Week · ${fmtDate(nextWeek, { weekday: 'short', day: 'numeric', month: 'short' })}, ${fmtDate(nextWeek, { hour: '2-digit', minute: '2-digit' })}` },
+    { value: 'pick', label: 'Pick a date' },
+  ]
   return <div className="fixed inset-0 z-[80] flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-6" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
     <form onSubmit={submit} className="my-auto max-h-[95vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white shadow-2xl">
       <div className="sticky top-0 z-10 flex items-center justify-between bg-[#102f59] px-5 py-4 text-white"><div><h2 className="text-lg font-semibold">{initial ? 'Ubah Event' : 'Tambah Event Kalender'}</h2><p className="text-xs text-white/70">Isi kegiatan, tanggal, tenggat, dan pengingat</p></div><button type="button" onClick={onClose} className="rounded-md p-1 hover:bg-white/10" aria-label="Tutup"><X size={21} /></button></div>
@@ -384,7 +396,7 @@ function EventModal({ initial, selectedDay, busy, onClose, onSave }: {
           </div>}
         </section>
         <section className="grid gap-4 sm:grid-cols-2">
-          <label className="space-y-1 text-sm font-medium">Repeat<select className="input" value={repeatRule} onChange={(e) => setRepeatRule(e.target.value)}>{REPEAT_OPTIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select><span className="block text-xs font-normal text-ink/50">Pilihan ini menyimpan pola pengulangan; pembuatan event berikutnya otomatis memerlukan scheduler lanjutan.</span></label>
+          <label className="space-y-1 text-sm font-medium">Repeat<select className="input" value={repeatRule} onChange={(e) => setRepeatRule(e.target.value)}>{REPEAT_OPTIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select><span className="block text-xs font-normal text-ink/50">Event berikutnya dibuat oleh dispatcher terjadwal setelah waktu event ini terlewati.</span></label>
           <label className="space-y-1 text-sm font-medium">Add file/link<textarea className="input min-h-24" value={links} onChange={(e) => setLinks(e.target.value)} placeholder="Tempel URL dokumen/file, satu URL tiap baris" /><span className="block text-xs font-normal text-ink/50">Versi ini menyimpan tautan; unggah file langsung memerlukan penyimpanan berkas yang dikonfigurasi.</span></label>
         </section>
         <section className="rounded-xl border border-line p-4">
