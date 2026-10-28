@@ -7,11 +7,13 @@
 - Event dengan tanggal/jam, pengingat, due date, pengulangan harian/mingguan/bulanan/tahunan, dan beberapa tautan.
 - Penerima per kanal: nomor WhatsApp, Telegram Chat ID, serta alamat email.
 - Endpoint dispatcher `GET /api/cron/calendar-reminders`. Endpoint ini dilindungi dengan `Authorization: Bearer <CRON_SECRET>`.
-- Status pengingat tersimpan di database: menunggu, sedang dikirim, terkirim, gagal, atau belum dikonfigurasi. Pengulangan membuat kejadian berikutnya setelah pengingat saat ini berhasil dikirim.
+- Status pengingat tersimpan di database: menunggu, sedang dikirim, terkirim, gagal, atau belum dikonfigurasi. Pengulangan membuat kejadian berikutnya ketika waktu event terlewati dan dispatcher terjadwal dipanggil.
+- Jenis event meliputi seluruh jadwal dan jatuh tempo yang diminta, termasuk jadwal gaji/beban, penerimaan/pengiriman barang, stok opname, giro, hutang/piutang, PPh, nomor produksi, transaksi terjadwal, dan tukar faktur.
+- Integrasi otomatis saat ini membuat event untuk faktur penjualan terbit yang masih memiliki piutang, faktur pembelian terbit yang masih memiliki hutang, serta pesanan pembelian berstatus dipesan dengan estimasi penerimaan. Pesanan yang sudah diterima atau dibatalkan dan faktur yang lunas tidak dibuat sebagai pengingat terbuka.
 
 ## Migrasi Supabase
 
-Jalankan `supabase/migrations/024_kalender.sql` sekali di SQL Editor pada proyek Supabase yang benar. Jangan jalankan berulang setelah sukses. Migration ini membuat tabel kalender dan event berikut kebijakan RLS. Migration tersebut mengasumsikan migrasi dasar perusahaan dan tabel cabang sebelumnya sudah diterapkan.
+Jalankan `supabase/migrations/024_kalender.sql` sekali di SQL Editor pada proyek Supabase yang benar, lalu jalankan `supabase/migrations/025_kalender_otomatis_transaksi.sql` sekali setelahnya. Jangan jalankan ulang setelah sukses. Migration 024 membuat tabel kalender/event dan aturan akses; migration 025 menambahkan kategori event, pengingat default per kalender, pemicu otomatis dari transaksi yang sudah didukung, serta backfill jadwal terbuka yang sudah ada. Migration ini mengasumsikan fondasi perusahaan, modul penjualan/pembelian, cabang, dan karyawan dari migration sebelumnya sudah diterapkan.
 
 ## Environment variables server
 
@@ -56,8 +58,10 @@ Atur interval setidaknya setiap menit jika ingin pengingat mendekati jam yang di
 
 ## Catatan operasi
 
-- Pengingat akan berstatus `pending` sampai dispatcher dijadwalkan dan konfigurasi provider lengkap.
-- Jika kanal yang dipilih gagal mengirim, status akan menjadi `failed` atau `not_configured`, dan alasannya ditampilkan di daftar event. Perbaiki konfigurasi lalu simpan ulang event untuk mencoba lagi.
+- Event hasil transaksi memakai pengaturan default kalender **Jadwal Transaksi**. Saat transaksi pertama yang memenuhi syarat disimpan, kalender ini dibuat otomatis. Buka kalender tersebut, pilih **Pengaturan**, lalu pilih kanal dan penerima default agar pengingat otomatis dikirim.
+- Pengingat akan berstatus `pending` sampai dispatcher dijadwalkan dan konfigurasi provider lengkap. Jika kanal default kosong, event tetap dibuat di kalender tetapi status pengingatnya `not_configured`.
+- Jika kanal yang dipilih gagal mengirim, status akan menjadi `failed` atau `not_configured`, dan alasannya ditampilkan di daftar event. Perbaiki konfigurasi pada Pengaturan kalender untuk menerapkan ulang pengingat transaksi yang belum terkirim.
+- Otomatis saat ini: `pj_dokumen` faktur terbit → `Jatuh Tempo Piutang`; `pb_dokumen` faktur terbit → `Jatuh Tempo Hutang`; `pb_dokumen` pesanan dengan status `dipesan` → `Jadwal Penerimaan Barang`. Integrasi jadwal gaji, beban, pengiriman keluar, stok opname, giro, nomor produksi, PPh, permintaan barang, dan tukar faktur menunggu modul transaksi sumbernya dibangun/dihubungkan. Jenis-jenis tersebut sudah dapat dipilih untuk event kalender manual.
 - `Add file/link` saat ini menyimpan URL. Upload berkas langsung belum memakai object storage.
 - Hak dapat diberikan per pengguna atau per cabang. Hak cabang membutuhkan data Karyawan aktif dengan alamat email yang sama persis (tanpa membedakan huruf besar/kecil) dengan email akun login; pastikan email dan cabang karyawan sudah benar.
 - Uji pertama dengan satu event beberapa menit ke depan dan satu penerima uji sebelum menyalakan pengiriman ke pengguna lain.
