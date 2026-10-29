@@ -52,3 +52,31 @@ comment on column public.ak_akun.currency_code is
 'Mata uang akun, hanya memilih mata uang yang dikonfigurasi untuk perusahaan tersebut.';
 comment on column public.ak_akun.catatan is
 'Catatan konfigurasi akun. Saldo awal dicatat melalui jurnal saldo awal yang seimbang, bukan disimpan sebagai saldo master akun.';
+
+
+-- Jaga pembuatan perusahaan baru tetap kompatibel dengan FK mata uang akun.
+-- Seed mata uang dasar terlebih dahulu karena trigger seed akun juga berjalan saat perusahaan dibuat.
+create or replace function public.ak_seed_akun(cid uuid) returns void
+language plpgsql security definer set search_path=public as $$
+begin
+  insert into public.company_currencies(company_id, code, name, symbol, is_default, is_active)
+  values (cid, 'IDR', 'Rupiah Indonesia', 'Rp', true, true)
+  on conflict (company_id, code) do nothing;
+
+  insert into public.ak_akun(company_id,kode,nama,tipe,normal,kode_tipe,currency_code,sistem) values
+    (cid,'1100','Kas dan Bank','aset','debit','BANK','IDR',true),
+    (cid,'1200','Piutang Usaha','aset','debit','AREC','IDR',true),
+    (cid,'1300','Persediaan Barang','aset','debit','INTR','IDR',true),
+    (cid,'1400','Pajak Masukan','aset','debit','OCAS','IDR',true),
+    (cid,'2100','Utang Usaha','kewajiban','kredit','APAY','IDR',true),
+    (cid,'2200','Pajak Keluaran','kewajiban','kredit','OCLY','IDR',true),
+    (cid,'3000','Modal dan Saldo Awal','modal','kredit','EQTY','IDR',true),
+    (cid,'3100','Saldo Laba','modal','kredit','EQTY','IDR',true),
+    (cid,'4000','Pendapatan Penjualan','pendapatan','kredit','REVE','IDR',true),
+    (cid,'4100','Pendapatan Lain-lain','pendapatan','kredit','OINC','IDR',true),
+    (cid,'5000','Harga Pokok Penjualan','beban','debit','COGS','IDR',true),
+    (cid,'6000','Beban Operasional','beban','debit','EXPS','IDR',true),
+    (cid,'6100','Beban Lain-lain','beban','debit','OEXP','IDR',true)
+  on conflict(company_id,kode) do nothing;
+end $$;
+revoke all on function public.ak_seed_akun(uuid) from public, anon, authenticated;
