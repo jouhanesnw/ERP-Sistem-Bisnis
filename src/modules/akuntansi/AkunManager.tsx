@@ -233,7 +233,8 @@ export default function AkunManager({ companyId, akun: initial, perm }: { compan
         {groups.map((group) => (
           <section key={group.key} className="card overflow-x-auto">
             <div className="border-b border-line p-3 font-semibold">{group.label} <span className="ml-1 text-sm font-normal text-ink/45">({group.items.length})</span></div>
-            <table className="w-full text-left text-sm">
+            <table className="w-full min-w-[1100px] table-fixed text-left text-sm">
+              <colgroup><col className="w-[10%]" /><col className="w-[22%]" /><col className="w-[18%]" /><col className="w-[12%]" /><col className="w-[9%]" /><col className="w-[10%]" /><col className="w-[9%]" /><col className="w-[10%]" /></colgroup>
               <thead><tr className="text-ink/60"><th className="p-3">Kode</th><th className="p-3">Nama akun</th><th className="p-3">Akun induk</th><th className="p-3">Tipe detail</th><th className="p-3">Mata uang</th><th className="p-3">Saldo normal</th><th className="p-3">Status</th><th className="p-3" /></tr></thead>
               <tbody>
                 {group.items.map((account) => (
