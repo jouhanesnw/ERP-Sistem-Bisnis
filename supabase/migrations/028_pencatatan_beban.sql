@@ -294,7 +294,7 @@ begin
   end if;
 
   insert into public.kas_transaksi(company_id,tanggal,jenis,rekening_id,kategori_id,jumlah,keterangan,created_by,currency_code)
-  values(cid,tgl,'keluar',cash_category is null ? rekening : rekening,cash_category,amount_value,
+  values(cid,tgl,'keluar',rekening,cash_category,amount_value,
     'Pembayaran beban '||bill.nomor,auth.uid(),currency_value)
   returning id into cash_id;
 
@@ -445,3 +445,40 @@ alter table public.company_transaction_favorites
     'sales_quote','sales_invoice','purchase_order','purchase_invoice',
     'kas_in','kas_out','kas_transfer','journal_manual','expense_recording'
   ));
+
+
+-- Allow Pencatatan Beban templates in the shared Favorites service.
+create or replace function public.company_transaction_favorite_save(p jsonb) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare
+  cid uuid := nullif(p->>'company_id','')::uuid;
+  fid uuid := nullif(p->>'id','')::uuid;
+  actor uuid := auth.uid();
+  name_value text := trim(coalesce(p->>'name',''));
+  type_value text := trim(coalesce(p->>'favorite_type',''));
+  visibility_value text := coalesce(nullif(p->>'visibility',''),'all_members');
+  payload_value jsonb := coalesce(p->'payload','{}'::jsonb);
+begin
+  if cid is null or not public.is_member(cid) then raise exception 'Tidak punya akses ke perusahaan ini'; end if;
+  if actor is null then raise exception 'Sesi login sudah berakhir'; end if;
+  if name_value = '' then raise exception 'Nama transaksi favorit wajib diisi'; end if;
+  if type_value not in (
+    'sales_quote','sales_invoice','purchase_order','purchase_invoice',
+    'kas_in','kas_out','kas_transfer','journal_manual','expense_recording'
+  ) then raise exception 'Jenis transaksi favorit belum didukung'; end if;
+  if visibility_value not in ('all_members','private') then raise exception 'Pilihan akses tidak valid'; end if;
+  if jsonb_typeof(payload_value) <> 'object' then raise exception 'Data templat tidak valid'; end if;
+
+  if fid is null then
+    insert into public.company_transaction_favorites(company_id,favorite_type,name,visibility,payload,created_by)
+    values(cid,type_value,name_value,visibility_value,payload_value,actor)
+    returning id into fid;
+  else
+    update public.company_transaction_favorites
+    set favorite_type=type_value,name=name_value,visibility=visibility_value,payload=payload_value,updated_at=now()
+    where id=fid and company_id=cid and (created_by=actor or public.is_admin(cid));
+    if not found then raise exception 'Transaksi favorit tidak ditemukan atau tidak boleh diubah'; end if;
+  end if;
+  return fid;
+end $$;
+grant execute on function public.company_transaction_favorite_save(jsonb) to authenticated;
