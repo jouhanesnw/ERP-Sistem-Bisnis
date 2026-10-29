@@ -209,7 +209,7 @@ export default function PencatatanBebanManager({
               <td className="p-3 max-w-[15rem] whitespace-normal break-words text-xs">{row.nomor_pembayaran || '—'}</td>
               <td className="p-3 text-right">
                 <div className="flex justify-end gap-1">
-                  {row.status !== 'Terbayar' && canPay && <button className="btn px-2" type="button" onClick={() => setPayment({ id: row.id, nomor: row.nomor, sisa: row.sisa, currency_code: row.currency_code, tanggal: isoDate() })} title="Catat pembayaran"><Wallet size={15} /><span className="hidden xl:inline">Bayar</span></button>}
+                  {row.status !== 'Terbayar' && canPay && <button className="btn px-2" type="button" onClick={() => { setError(null); setPayment({ id: row.id, nomor: row.nomor, sisa: row.sisa, currency_code: row.currency_code, tanggal: isoDate() }) }} title="Catat pembayaran"><Wallet size={15} /><span className="hidden xl:inline">Bayar</span></button>}
                   {perm.edit && Number(row.dibayar) === 0 && <button className="btn px-2" type="button" onClick={() => void editExpense(row)} title="Ubah"><Pencil size={15} /></button>}
                   {perm.delete && Number(row.dibayar) === 0 && <button className="btn px-2 text-red-600" type="button" onClick={() => void deleteExpense(row)} title="Hapus"><Trash2 size={15} /></button>}
                   <button className="btn px-2" type="button" onClick={() => setExpanded((value) => ({ ...value, [row.id]: !value[row.id] }))} aria-expanded={!!expanded[row.id]} title="Detail"><ChevronDown size={15} /></button>
@@ -229,11 +229,11 @@ export default function PencatatanBebanManager({
     {formOpen && <ExpenseForm
       key={formInstance}
       companyId={companyId} accounts={accounts} currencies={activeCurrencies} branches={branches}
-      initial={editing ? { ...editing, branch_id: editing.branch_id ?? '', items: editingLines } : null} busy={busy}
+      initial={editing ? { ...editing, branch_id: editing.branch_id ?? '', items: editingLines } : null} busy={busy} serverError={error}
       onClose={() => { setFormOpen(false); setEditing(null) }}
       onSave={saveExpense}
     />}
-    {payment && <PaymentModal bill={payment} cashAccounts={cashAccounts.filter((account) => account.aktif && account.currency_code === payment.currency_code)} busy={busy}
+    {payment && <PaymentModal bill={payment} cashAccounts={cashAccounts.filter((account) => account.aktif && account.currency_code === payment.currency_code)} busy={busy} serverError={error}
       onClose={() => setPayment(null)} onSave={savePayment} />}
     {!canPay && <p className="text-xs text-ink/50">Pelunasan memerlukan izin Buat pada modul Kas & Bank serta izin Buat pada Akuntansi.</p>}
   </div>
@@ -270,13 +270,14 @@ function ExpenseDetail({ sb, companyId, row, accountNames }: { sb: any; companyI
   </div>
 }
 
-function ExpenseForm({ companyId, accounts, currencies, branches, initial, busy, onClose, onSave }: {
+function ExpenseForm({ companyId, accounts, currencies, branches, initial, busy, serverError, onClose, onSave }: {
   companyId: string
   accounts: Account[]
   currencies: Currency[]
   branches: Branch[]
   initial: ExpenseFormData | null
   busy: boolean
+  serverError: string | null
   onClose: () => void
   onSave: (payload: Omit<ExpenseFormData, 'id'>) => Promise<void>
 }) {
@@ -339,7 +340,7 @@ function ExpenseForm({ companyId, accounts, currencies, branches, initial, busy,
         <TransactionFavoriteControls companyId={companyId} favoriteType="expense_recording"
           payload={{ hutang_akun_id: payable, currency_code: currency, branch_id: branchId || null, catatan, jatuh_tempo: due, beban_items: items.map((item) => ({ akun_beban_id: item.akun_beban_id, deskripsi: item.deskripsi, jumlah: item.jumlah })) }}
           onApply={applyFavorite} />
-        {formError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{formError}</p>}
+        {formError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{formError}</p>}{serverError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{serverError}</p>}
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <label className="space-y-1 text-sm font-medium">Tanggal <span className="text-red-600">*</span><input className="input" type="date" value={tanggal} onChange={(e) => setTanggal(e.target.value)} required /></label>
           <label className="space-y-1 text-sm font-medium">Jatuh Tempo <span className="text-red-600">*</span><input className="input" type="date" value={due} onChange={(e) => setDue(e.target.value)} required /></label>
@@ -372,8 +373,8 @@ function ExpenseForm({ companyId, accounts, currencies, branches, initial, busy,
   </div>
 }
 
-function PaymentModal({ bill, cashAccounts, busy, onClose, onSave }: {
-  bill: PaymentFormData; cashAccounts: CashAccount[]; busy: boolean; onClose: () => void
+function PaymentModal({ bill, cashAccounts, busy, serverError, onClose, onSave }: {
+  bill: PaymentFormData; cashAccounts: CashAccount[]; busy: boolean; serverError: string | null; onClose: () => void
   onSave: (payload: { tanggal: string; jumlah: string; rekening_id: string; catatan: string }) => Promise<void>
 }) {
   const [tanggal, setTanggal] = useState(bill.tanggal)
@@ -393,7 +394,7 @@ function PaymentModal({ bill, cashAccounts, busy, onClose, onSave }: {
       <div className="flex items-center justify-between bg-[#102f59] px-5 py-4 text-white"><div><h2 className="font-semibold">Pembayaran Beban</h2><p className="text-xs text-white/70">{bill.nomor}</p></div><button className="rounded-md p-1 hover:bg-white/10" type="button" onClick={onClose} aria-label="Tutup"><X size={19} /></button></div>
       <div className="space-y-4 p-5">
         <div className="rounded-lg bg-canvas p-3"><p className="text-xs text-ink/55">Sisa yang harus dibayar</p><p className="mt-1 text-xl font-semibold">{money(bill.sisa, bill.currency_code)}</p></div>
-        {formError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{formError}</p>}
+        {formError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{formError}</p>}{serverError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{serverError}</p>}{!cashAccounts.length && <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Belum ada rekening Kas/Bank aktif dengan mata uang {bill.currency_code}. Tambahkan atau aktifkan rekening tersebut di menu Kas & Bank → Rekening.</p>}
         <label className="block space-y-1 text-sm font-medium">Tanggal Pembayaran<input type="date" className="input" value={tanggal} onChange={(e) => setTanggal(e.target.value)} required /></label>
         <label className="block space-y-1 text-sm font-medium">Rekening Kas/Bank<select className="input" value={rekening} onChange={(e) => setRekening(e.target.value)} required><option value="">Pilih rekening…</option>{cashAccounts.map((account) => <option key={account.id} value={account.id}>{account.nama} · {account.currency_code}</option>)}</select></label>
         <label className="block space-y-1 text-sm font-medium">Jumlah Pembayaran<input type="number" className="input" min="0.01" step="0.01" max={Number(bill.sisa)} value={jumlah} onChange={(e) => setJumlah(e.target.value)} required /></label>
