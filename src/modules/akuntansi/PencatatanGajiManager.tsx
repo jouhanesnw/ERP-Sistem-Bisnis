@@ -355,6 +355,13 @@ function PayrollForm({ companyId, initial, employees, salaryItems, branches, bus
     setEmployeeSearch(''); setCandidateId(''); setPickerOpen(false); setFormError(null)
   }
   function updateLine(updated: PayrollLine) { setLines((old) => old.map((line) => line.employee_id === updated.employee_id ? updated : line)) }
+  function closeDetailLine() {
+    if (!detailLine) return
+    const employeeId = detailLine.employee_id
+    const wasNew = detailIsNew
+    setDetailLine(null); setDetailIsNew(false)
+    if (wasNew) setLines((old) => old.filter((item) => item.employee_id !== employeeId))
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setFormError(null)
@@ -433,7 +440,7 @@ function PayrollForm({ companyId, initial, employees, salaryItems, branches, bus
       salaryItems={applicableItems}
       year={periodYear} month={periodMonth}
       busy={busy}
-      onClose={() => { const wasNew = detailIsNew; setDetailLine(null); setDetailIsNew(false); if (wasNew) setLines((old) => old.filter((item) => item.employee_id !== detailLine.employee_id)) }}
+      onClose={closeDetailLine}
       onSave={(updated) => { updateLine(updated); setDetailLine(null); setDetailIsNew(false) }}
     />}
   </div>
