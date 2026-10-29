@@ -477,7 +477,7 @@ begin
   description_value := 'Sisa belum dibayar: ' || b.currency_code || ' ' || to_char(greatest(b.total-paid_value,0),'FM999G999G999G990D00')
     || case when nullif(trim(coalesce(b.catatan,'')),'') is not null then E'\nCatatan: '||b.catatan else '' end;
 
-  insert into public.company_calendar_events(
+  insert into public.company_calendar_events as existing_event(
     company_id, calendar_id, event_type, title, description, start_at, due_at, reminder_at,
     repeat_rule, attachment_links, reminder_channels, reminder_recipients, reminder_status,
     reminder_attempts, reminder_last_error, reminder_sent_at, repeat_processed_at,
@@ -502,29 +502,29 @@ begin
     reminder_channels=excluded.reminder_channels,
     reminder_recipients=excluded.reminder_recipients,
     reminder_status=case
-      when public.company_calendar_events.start_at is distinct from excluded.start_at
-        or public.company_calendar_events.reminder_channels is distinct from excluded.reminder_channels
-        or public.company_calendar_events.reminder_recipients is distinct from excluded.reminder_recipients
+      when existing_event.start_at is distinct from excluded.start_at
+        or existing_event.reminder_channels is distinct from excluded.reminder_channels
+        or existing_event.reminder_recipients is distinct from excluded.reminder_recipients
       then case when cardinality(excluded.reminder_channels)>0 then 'pending' else 'not_configured' end
-      else public.company_calendar_events.reminder_status
+      else existing_event.reminder_status
     end,
     reminder_attempts=case
-      when public.company_calendar_events.start_at is distinct from excluded.start_at
-        or public.company_calendar_events.reminder_channels is distinct from excluded.reminder_channels
-        or public.company_calendar_events.reminder_recipients is distinct from excluded.reminder_recipients
-      then 0 else public.company_calendar_events.reminder_attempts
+      when existing_event.start_at is distinct from excluded.start_at
+        or existing_event.reminder_channels is distinct from excluded.reminder_channels
+        or existing_event.reminder_recipients is distinct from excluded.reminder_recipients
+      then 0 else existing_event.reminder_attempts
     end,
     reminder_last_error=case
-      when public.company_calendar_events.start_at is distinct from excluded.start_at
-        or public.company_calendar_events.reminder_channels is distinct from excluded.reminder_channels
-        or public.company_calendar_events.reminder_recipients is distinct from excluded.reminder_recipients
-      then null else public.company_calendar_events.reminder_last_error
+      when existing_event.start_at is distinct from excluded.start_at
+        or existing_event.reminder_channels is distinct from excluded.reminder_channels
+        or existing_event.reminder_recipients is distinct from excluded.reminder_recipients
+      then null else existing_event.reminder_last_error
     end,
     reminder_sent_at=case
-      when public.company_calendar_events.start_at is distinct from excluded.start_at
-        or public.company_calendar_events.reminder_channels is distinct from excluded.reminder_channels
-        or public.company_calendar_events.reminder_recipients is distinct from excluded.reminder_recipients
-      then null else public.company_calendar_events.reminder_sent_at
+      when existing_event.start_at is distinct from excluded.start_at
+        or existing_event.reminder_channels is distinct from excluded.reminder_channels
+        or existing_event.reminder_recipients is distinct from excluded.reminder_recipients
+      then null else existing_event.reminder_sent_at
     end,
     source_url=excluded.source_url,
     updated_at=now();
