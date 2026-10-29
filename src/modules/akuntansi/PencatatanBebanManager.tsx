@@ -229,7 +229,7 @@ export default function PencatatanBebanManager({
     {formOpen && <ExpenseForm
       key={formInstance}
       companyId={companyId} accounts={accounts} currencies={activeCurrencies} branches={branches}
-      initial={editing ? { ...editing, branch_id: editing.branch_id ?? '', items: editingLines } : null} busy={busy} serverError={error}
+      initial={editing ? { ...editing, catatan: editing.catatan ?? '', branch_id: editing.branch_id ?? '', items: editingLines } : null} busy={busy} serverError={error}
       onClose={() => { setFormOpen(false); setEditing(null) }}
       onSave={saveExpense}
     />}
