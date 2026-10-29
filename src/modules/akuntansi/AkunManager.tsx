@@ -42,6 +42,7 @@ export default function AkunManager({ companyId, akun: initial, perm }: { compan
   const [nama, setNama] = useState('')
   const [kode, setKode] = useState('')
   const [tipe, setTipe] = useState<MainType>('beban')
+  const [normal, setNormal] = useState<Akun['normal']>('debit')
   const [kodeTipe, setKodeTipe] = useState('UMUM')
   const [indukId, setIndukId] = useState('')
   const [currencyCode, setCurrencyCode] = useState('IDR')
@@ -86,12 +87,12 @@ export default function AkunManager({ companyId, akun: initial, perm }: { compan
     }
     return excluded
   }, [editing, akun])
-  const parentOptions = akun.filter((item) => item.aktif && !descendantsOfEditing.has(item.id))
+  const parentOptions = akun.filter((item) => item.aktif && item.tipe === tipe && !descendantsOfEditing.has(item.id))
   const subtypeOptions = SUBTYPES.filter((item) => item.main.includes(tipe))
   const accountNameById = useMemo(() => new Map(akun.map((item) => [item.id, item.nama])), [akun])
 
   function resetForm() {
-    setNama(''); setKode(''); setTipe('beban'); setKodeTipe('UMUM')
+    setNama(''); setKode(''); setTipe('beban'); setNormal('debit'); setKodeTipe('UMUM')
     setIndukId(''); setCatatan(''); setEditing(null)
     setCurrencyCode(currencies.find((item) => item.code === 'IDR')?.code ?? currencies[0]?.code ?? 'IDR')
     setError(null)
@@ -106,6 +107,7 @@ export default function AkunManager({ companyId, akun: initial, perm }: { compan
     setNama(account.nama)
     setKode(account.kode)
     setTipe(account.tipe)
+    setNormal(account.normal)
     setKodeTipe(account.kode_tipe || 'UMUM')
     setIndukId(account.induk_id ?? '')
     setCurrencyCode(account.currency_code || 'IDR')
@@ -114,6 +116,8 @@ export default function AkunManager({ companyId, akun: initial, perm }: { compan
   }
   function handleTipeChange(value: MainType) {
     setTipe(value)
+    setNormal(['aset', 'beban'].includes(value) ? 'debit' : 'kredit')
+    if (indukId && akun.find((item) => item.id === indukId)?.tipe !== value) setIndukId('')
     const currentSubtype = SUBTYPES.find((item) => item.code === kodeTipe)
     if (!currentSubtype || !currentSubtype.main.includes(value)) setKodeTipe('UMUM')
   }
@@ -125,7 +129,7 @@ export default function AkunManager({ companyId, akun: initial, perm }: { compan
       kode: kode.trim(),
       nama: nama.trim(),
       tipe,
-      normal: (['aset', 'beban'].includes(tipe) ? 'debit' : 'kredit') as Akun['normal'],
+      normal,
       kode_tipe: kodeTipe,
       induk_id: indukId || null,
       currency_code: currencyCode,
@@ -202,6 +206,7 @@ export default function AkunManager({ companyId, akun: initial, perm }: { compan
               {subtypeOptions.map((item) => <option key={item.code} value={item.code}>{item.code} — {item.label}</option>)}
             </select>
           </label>
+          <label className="text-sm">Saldo normal<select className="input mt-1" value={normal} onChange={(event) => setNormal(event.target.value as Akun['normal'])}><option value="debit">Debit</option><option value="kredit">Kredit</option></select></label>
           <label className="text-sm">Akun induk (opsional)
             <select className="input mt-1" value={indukId} onChange={(event) => setIndukId(event.target.value)}>
               <option value="">Tanpa induk</option>
@@ -216,7 +221,7 @@ export default function AkunManager({ companyId, akun: initial, perm }: { compan
           <label className="text-sm sm:col-span-2 xl:col-span-4">Catatan
             <textarea className="input min-h-16" value={catatan} onChange={(event) => setCatatan(event.target.value)} placeholder="Opsional: tujuan/penggunaan akun" />
           </label>
-          <div className="flex items-center text-sm text-ink/60">Saldo normal otomatis: <b className="ml-1">{['aset', 'beban'].includes(tipe) ? 'debit' : 'kredit'}</b></div>
+          <div className="flex items-center text-sm text-ink/60">Saldo normal mengikuti jenis akun, tetapi dapat diubah untuk akun kontra (misalnya akumulasi penyusutan).</div>
           <div className="flex flex-wrap items-center justify-end gap-2 sm:col-span-2 xl:col-span-4">
             <button type="button" className="btn" onClick={() => { setShowForm(false); resetForm() }}>Batal</button>
             <button className="btn btn-primary" disabled={busy}>{busy ? 'Menyimpan…' : editing ? 'Simpan Perubahan' : 'Simpan Akun'}</button>
