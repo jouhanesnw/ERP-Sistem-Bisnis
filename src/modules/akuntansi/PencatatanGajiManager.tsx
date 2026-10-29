@@ -90,7 +90,7 @@ function blankLine(employee: Employee, items: SalaryItem[], payType: string): Pa
     employee_id: employee.id, nama_karyawan: employee.full_name, kode_karyawan: employee.employee_code,
     ptkp_status: employee.ptkp_status, pph: employee.subject_to_pph21 ? '0' : '0',
     komponen: items.filter((item) => item.active && item.pay_type === payType).map((item) => ({
-      salary_item_id: item.id, jumlah: '0', nama: item.name, item_type: item.item_type,
+      salary_item_id: item.id, jumlah: '', nama: item.name, item_type: item.item_type,
     })),
     info_lainnya: { catatan: '' },
   }
