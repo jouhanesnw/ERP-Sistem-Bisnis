@@ -315,6 +315,7 @@ function PayrollForm({ companyId, initial, employees, salaryItems, branches, bus
   const [branchId, setBranchId] = useState(initial?.branch_id ?? '')
   const [periodMonth, setPeriodMonth] = useState(initial?.periode_bulan ?? now.getMonth() + 1)
   const [periodYear, setPeriodYear] = useState(initial?.periode_tahun ?? now.getFullYear())
+  const yearOptions = Array.from(new Set([...Array.from({ length: 11 }, (_, index) => now.getFullYear() - 5 + index), ...(initial ? [initial.periode_tahun] : [])])).sort((a, b) => a - b)
   const [tanggal, setTanggal] = useState(initial?.tanggal ?? isoDate())
   const [due, setDue] = useState(initial?.jatuh_tempo ?? isoDate())
   const [note, setNote] = useState(initial?.catatan ?? '')
@@ -330,6 +331,7 @@ function PayrollForm({ companyId, initial, employees, salaryItems, branches, bus
   const [candidateId, setCandidateId] = useState('')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [detailLine, setDetailLine] = useState<PayrollLine | null>(null)
+  const [detailIsNew, setDetailIsNew] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const currentEmployees = employees.filter((employee) => employee.active && (!branchId || employee.branch_id === branchId))
   const availableEmployees = currentEmployees.filter((employee) => !lines.some((line) => line.employee_id === employee.id)
@@ -349,7 +351,7 @@ function PayrollForm({ companyId, initial, employees, salaryItems, branches, bus
     if (lines.some((line) => line.employee_id === employee.id)) { setFormError('Karyawan ini sudah ada di rincian.'); return }
     const newLine = blankLine(employee, applicableItems, payType)
     setLines((old) => [...old, newLine])
-    setDetailLine(newLine)
+    setDetailLine(newLine); setDetailIsNew(true)
     setEmployeeSearch(''); setCandidateId(''); setPickerOpen(false); setFormError(null)
   }
   function updateLine(updated: PayrollLine) { setLines((old) => old.map((line) => line.employee_id === updated.employee_id ? updated : line)) }
@@ -380,7 +382,7 @@ function PayrollForm({ companyId, initial, employees, salaryItems, branches, bus
             <label className="grid gap-1.5 text-sm sm:grid-cols-[150px_minmax(0,1fr)] sm:items-center"><span>Nomor #</span><input className="input bg-canvas" readOnly value={initial?.nomor ?? 'Otomatis saat disimpan'} /></label>
             <label className="grid gap-1.5 text-sm sm:grid-cols-[150px_minmax(0,1fr)] sm:items-center"><span>Cabang <b className="text-red-600">*</b></span><select className="input" value={branchId} onChange={(e) => { setBranchId(e.target.value); setCandidateId(''); setEmployeeSearch('') }} required><option value="">Pilih cabang…</option>{branches.filter((branch) => branch.active).map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}</select></label>
             <label className="grid gap-1.5 text-sm sm:grid-cols-[150px_minmax(0,1fr)] sm:items-center"><span>Tanggal <b className="text-red-600">*</b></span><input className="input" type="date" value={tanggal} onChange={(e) => setTanggal(e.target.value)} required /></label>
-            <label className="grid gap-1.5 text-sm sm:grid-cols-[150px_minmax(0,1fr)] sm:items-center"><span>Bulan</span><div className="grid grid-cols-[minmax(0,1fr)_110px] gap-2"><select className="input" value={periodMonth} onChange={(e) => setPeriodMonth(Number(e.target.value))}>{MONTHS.map((month, index) => <option key={month} value={index + 1}>{month}</option>)}</select><select className="input" value={periodYear} onChange={(e) => setPeriodYear(Number(e.target.value))}>{Array.from({ length: 11 }, (_, index) => now.getFullYear() - 5 + index).map((year) => <option key={year} value={year}>{year}</option>)}</select></div></label>
+            <label className="grid gap-1.5 text-sm sm:grid-cols-[150px_minmax(0,1fr)] sm:items-center"><span>Bulan</span><div className="grid grid-cols-[minmax(0,1fr)_110px] gap-2"><select className="input" value={periodMonth} onChange={(e) => setPeriodMonth(Number(e.target.value))}>{MONTHS.map((month, index) => <option key={month} value={index + 1}>{month}</option>)}</select><select className="input" value={periodYear} onChange={(e) => setPeriodYear(Number(e.target.value))}>{yearOptions.map((year) => <option key={year} value={year}>{year}</option>)}</select></div></label>
             <label className="grid gap-1.5 text-sm sm:grid-cols-[150px_minmax(0,1fr)] sm:items-center"><span>Jatuh Tempo <b className="text-red-600">*</b></span><input className="input" type="date" value={due} onChange={(e) => setDue(e.target.value)} required /></label>
           </div>
           {formError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{formError}</p>}
@@ -402,7 +404,7 @@ function PayrollForm({ companyId, initial, employees, salaryItems, branches, bus
               <table className="w-full min-w-[760px] text-left text-sm">
                 <thead className="bg-[#5b7189] text-white"><tr><th className="p-3">Nama Karyawan</th><th className="p-3 text-right">Pendapatan Bruto</th><th className="p-3 text-right">Pajak Penghasilan</th><th className="p-3 text-right">Gaji dibayarkan</th><th className="p-3" /></tr></thead>
                 <tbody>
-                  {lines.map((line) => { const amount = lineTotals(line, salaryItems); return <tr key={line.employee_id} className="border-t border-line odd:bg-white even:bg-canvas/40"><td className="p-3"><button type="button" className="font-medium text-blue-700 hover:underline" onClick={() => setDetailLine(line)}>{line.nama_karyawan}</button><span className="mt-1 block text-xs text-ink/50">{line.kode_karyawan} · [{line.ptkp_status}]</span></td><td className="p-3 text-right tabular-nums">{money(amount.gross)}</td><td className="p-3 text-right tabular-nums">{money(amount.pph)}</td><td className="p-3 text-right font-medium tabular-nums">{money(amount.net)}</td><td className="p-3 text-right"><div className="flex justify-end gap-1"><button type="button" className="btn px-2" title="Rincian karyawan" onClick={() => setDetailLine(line)}><Pencil size={14} /></button><button type="button" className="btn px-2 text-red-600" title="Hapus dari pencatatan" onClick={() => setLines((old) => old.filter((item) => item.employee_id !== line.employee_id))}><Trash2 size={14} /></button></div></td></tr> })}
+                  {lines.map((line) => { const amount = lineTotals(line, salaryItems); return <tr key={line.employee_id} className="border-t border-line odd:bg-white even:bg-canvas/40"><td className="p-3"><button type="button" className="font-medium text-blue-700 hover:underline" onClick={() => { setDetailLine(line); setDetailIsNew(false) }}>{line.nama_karyawan}</button><span className="mt-1 block text-xs text-ink/50">{line.kode_karyawan} · [{line.ptkp_status}]</span></td><td className="p-3 text-right tabular-nums">{money(amount.gross)}</td><td className="p-3 text-right tabular-nums">{money(amount.pph)}</td><td className="p-3 text-right font-medium tabular-nums">{money(amount.net)}</td><td className="p-3 text-right"><div className="flex justify-end gap-1"><button type="button" className="btn px-2" title="Rincian karyawan" onClick={() => setDetailLine(line)}><Pencil size={14} /></button><button type="button" className="btn px-2 text-red-600" title="Hapus dari pencatatan" onClick={() => setLines((old) => old.filter((item) => item.employee_id !== line.employee_id))}><Trash2 size={14} /></button></div></td></tr> })}
                   {!lines.length && <tr><td colSpan={5} className="p-8 text-center text-ink/55">Belum ada data. Cari karyawan lalu tekan Ambil.</td></tr>}
                 </tbody>
               </table>
@@ -431,8 +433,8 @@ function PayrollForm({ companyId, initial, employees, salaryItems, branches, bus
       salaryItems={applicableItems}
       year={periodYear} month={periodMonth}
       busy={busy}
-      onClose={() => setDetailLine(null)}
-      onSave={(updated) => { updateLine(updated); setDetailLine(null) }}
+      onClose={() => { const wasNew = detailIsNew; setDetailLine(null); setDetailIsNew(false); if (wasNew) setLines((old) => old.filter((item) => item.employee_id !== detailLine.employee_id)) }}
+      onSave={(updated) => { updateLine(updated); setDetailLine(null); setDetailIsNew(false) }}
     />}
   </div>
 }
