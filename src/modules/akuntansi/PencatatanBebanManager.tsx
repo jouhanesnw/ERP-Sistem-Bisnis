@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, Check, ChevronDown, ChevronUp, FileText, Loader2, Pencil, Plus, Receipt, Trash2, Wallet, X } from 'lucide-react'
+import { AlertTriangle, Check, ChevronDown, ChevronUp, FileText, Loader2, Pencil, Plus, Receipt, Search, Trash2, Wallet, X } from 'lucide-react'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { formatCurrency } from '@/modules/pengaturan/currencies'
 import TransactionFavoriteControls, { type FavoritePayload } from '@/modules/pengaturan/TransactionFavoriteControls'
@@ -270,6 +270,55 @@ function ExpenseDetail({ sb, companyId, row, accountNames }: { sb: any; companyI
   </div>
 }
 
+function AccountPicker({ accounts, value, onChange, placeholder }: {
+  accounts: Account[]
+  value: string
+  onChange: (value: string) => void
+  placeholder: string
+}) {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const selected = accounts.find((account) => account.id === value)
+  const shownAccounts = accounts.filter((account) =>
+    `${account.kode} ${account.nama}`.toLocaleLowerCase('id').includes(query.trim().toLocaleLowerCase('id'))
+  )
+
+  return <div className="relative">
+    <div className="relative">
+      <input
+        className="input pr-10"
+        value={open ? query : selected ? `${selected.kode} · ${selected.nama}` : query}
+        onFocus={() => { setQuery(''); setOpen(true) }}
+        onChange={(event) => { setQuery(event.target.value); setOpen(true) }}
+        onBlur={() => { window.setTimeout(() => setOpen(false), 120) }}
+        placeholder={placeholder}
+        role="combobox"
+        aria-expanded={open}
+        aria-autocomplete="list"
+        autoComplete="off"
+      />
+      <Search size={18} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink/50" />
+    </div>
+    {open && <div role="listbox" className="absolute z-[100] mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-line bg-white py-1 shadow-xl">
+      {shownAccounts.length ? shownAccounts.map((account) =>
+        <button
+          key={account.id}
+          type="button"
+          role="option"
+          aria-selected={account.id === value}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => { onChange(account.id); setQuery(''); setOpen(false) }}
+          className={`flex w-full items-start gap-3 px-3 py-2 text-left text-sm hover:bg-blue-50 ${account.id === value ? 'bg-blue-50' : ''}`}
+        >
+          <span className="min-w-[6.5rem] font-medium tabular-nums">{account.kode}</span>
+          <span className="flex-1">{account.nama}</span>
+          {account.id === value && <Check size={16} className="shrink-0 text-blue-700" />}
+        </button>
+      ) : <p className="px-3 py-3 text-sm text-ink/55">Akun COA tidak ditemukan.</p>}
+    </div>}
+  </div>
+}
+
 function ExpenseForm({ companyId, accounts, currencies, branches, initial, busy, serverError, onClose, onSave }: {
   companyId: string
   accounts: Account[]
@@ -346,8 +395,13 @@ function ExpenseForm({ companyId, accounts, currencies, branches, initial, busy,
           <label className="space-y-1 text-sm font-medium">Jatuh Tempo <span className="text-red-600">*</span><input className="input" type="date" value={due} onChange={(e) => setDue(e.target.value)} required /></label>
           <label className="space-y-1 text-sm font-medium">Mata Uang<select className="input" value={currency} onChange={(e) => changeCurrency(e.target.value)}>{currencies.map((item) => <option key={item.code} value={item.code}>{item.code} — {item.name}</option>)}</select></label>
           <label className="space-y-1 text-sm font-medium sm:col-span-2 xl:col-span-3">Hutang Beban <span className="text-red-600">*</span>
-            <select className="input" value={payable} onChange={(e) => setPayable(e.target.value)} required><option value="">Pilih akun kewajiban jangka pendek…</option>{availablePayables.map((account) => <option key={account.id} value={account.id}>{account.kode} · {account.nama}</option>)}</select>
-            <span className="block text-xs font-normal text-ink/50">Hanya akun kelompok Kewajiban dengan tipe detail OCLY (Kewajiban Jangka Pendek) dan mata uang yang sama.</span>
+            <AccountPicker
+              accounts={availablePayables}
+              value={payable}
+              onChange={setPayable}
+              placeholder="Cari/Pilih Akun Perkiraan…"
+            />
+            <span className="block text-xs font-normal text-ink/50">Pilih langsung dari COA: hanya akun Kewajiban Jangka Pendek (OCLY) yang aktif dan bermata uang sama. Akun terpilih menjadi akun Kredit Hutang Beban pada jurnal.</span>
           </label>
         </div>
         <div className="overflow-x-auto rounded-lg border border-line">
