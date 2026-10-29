@@ -26,7 +26,7 @@ export type ExpenseRow = {
   status: 'Sedang Diproses' | 'Sebagian Dibayar' | 'Terbayar'
   nomor_pembayaran: string | null
 }
-type ExpenseFormData = { id?: string; tanggal: string; jatuh_tempo: string; hutang_akun_id: string; currency_code: string; branch_id: string; catatan: string; items: ExpenseLine[] }
+type ExpenseFormData = { id?: string; nomor?: string; tanggal: string; jatuh_tempo: string; hutang_akun_id: string; currency_code: string; branch_id: string; catatan: string; items: ExpenseLine[] }
 type PaymentFormData = { id: string; nomor: string; sisa: number | string; currency_code: string; tanggal: string }
 
 const money = (value: number | string, code: string) => formatCurrency(Number(value) || 0, code)
