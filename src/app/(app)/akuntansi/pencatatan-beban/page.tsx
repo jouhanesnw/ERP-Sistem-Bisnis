@@ -10,13 +10,13 @@ export default async function PencatatanBebanPage() {
 
   const sb = supabaseServer()
   const db = sb as any
-  const canPay = can(ctx.perms, 'akuntansi', 'create') && can(ctx.perms, 'kas', 'create')
+  const canPay = can(ctx.perms, 'akuntansi', 'create') && can(ctx.perms, 'kas', 'view') && can(ctx.perms, 'kas', 'create')
   const [rowsResult, accountsResult, currenciesResult, branchesResult, cashResult] = await Promise.all([
     db.from('ak_pencatatan_beban_v').select('*').eq('company_id', ctx.active.companyId)
       .order('tanggal', { ascending: false }).order('created_at', { ascending: false }).limit(500),
     db.from('ak_akun')
       .select('id, company_id, kode, nama, tipe, normal, induk_id, sistem, aktif, kode_tipe, currency_code, catatan')
-      .eq('company_id', ctx.active.companyId).eq('aktif', true).order('kode'),
+      .eq('company_id', ctx.active.companyId).order('kode'),
     db.from('company_currencies').select('code, name, symbol, is_default')
       .eq('company_id', ctx.active.companyId).eq('is_active', true).order('code'),
     db.from('company_branches').select('id, name, active')
