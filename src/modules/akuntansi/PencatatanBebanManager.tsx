@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, Check, ChevronDown, ChevronUp, Clock3, FileText, Loader2, Pencil, Plus, Receipt, Trash2, Wallet, X } from 'lucide-react'
+import { AlertTriangle, Check, ChevronDown, FileText, Loader2, Pencil, Plus, Receipt, Trash2, Wallet, X } from 'lucide-react'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { formatCurrency } from '@/modules/pengaturan/currencies'
 import TransactionFavoriteControls, { type FavoritePayload } from '@/modules/pengaturan/TransactionFavoriteControls'
@@ -17,7 +17,7 @@ type Currency = { code: string; name: string; symbol: string; is_default: boolea
 type Branch = { id: string; name: string; active: boolean }
 type CashAccount = { id: string; nama: string; tipe: 'tunai' | 'bank' | 'ewallet'; nomor: string | null; aktif: boolean; currency_code: string }
 type ExpenseLine = { id?: string; akun_beban_id: string; deskripsi: string; jumlah: string }
-type ExpenseRow = {
+export type ExpenseRow = {
   id: string; company_id: string; nomor: string; tanggal: string; jatuh_tempo: string
   hutang_akun_id: string; currency_code: string; total: number | string; branch_id: string | null
   catatan: string | null; created_by: string | null; created_at: string; updated_at: string
@@ -135,7 +135,7 @@ export default function PencatatanBebanManager({
       branch_id: payload.branch_id || null, catatan: payload.catatan,
       items: payload.items.map((item) => ({ akun_beban_id: item.akun_beban_id, deskripsi: item.deskripsi, jumlah: Number(item.jumlah) })),
     }
-    const { data, error: saveError } = await db.rpc('ak_pencatatan_beban_simpan', { p: args })
+    const { error: saveError } = await db.rpc('ak_pencatatan_beban_simpan', { p: args })
     setBusy(false)
     if (saveError) { setError(saveError.message); return }
     setFormOpen(false); setEditing(null)
@@ -145,7 +145,7 @@ export default function PencatatanBebanManager({
   async function savePayment(payload: { tanggal: string; jumlah: string; rekening_id: string; catatan: string }) {
     if (!payment) return
     setBusy(true); setError(null); setNotice(null)
-    const { data, error: paymentError } = await db.rpc('ak_beban_bayar', {
+    const { error: paymentError } = await db.rpc('ak_beban_bayar', {
       p: { company_id: companyId, beban_id: payment.id, tanggal: payload.tanggal, jumlah: Number(payload.jumlah), rekening_id: payload.rekening_id, catatan: payload.catatan },
     })
     setBusy(false)
@@ -156,7 +156,6 @@ export default function PencatatanBebanManager({
   }
 
   const activeCurrencies = currencies.length ? currencies : [{ code: 'IDR', name: 'Rupiah Indonesia', symbol: 'Rp', is_default: true }]
-  const accountForForm = editing?.currency_code ?? activeCurrencies.find((item) => item.is_default)?.code ?? 'IDR'
   const accountNames = useMemo(() => new Map(accounts.map((account) => [account.id, `${account.kode} · ${account.nama}`])), [accounts])
 
   return <div className="space-y-4">
@@ -230,7 +229,7 @@ export default function PencatatanBebanManager({
     {formOpen && <ExpenseForm
       key={formInstance}
       companyId={companyId} accounts={accounts} currencies={activeCurrencies} branches={branches}
-      initial={editing ? { ...editing, items: editingLines } : null} busy={busy}
+      initial={editing ? { ...editing, branch_id: editing.branch_id ?? '', items: editingLines } : null} busy={busy}
       onClose={() => { setFormOpen(false); setEditing(null) }}
       onSave={saveExpense}
     />}
