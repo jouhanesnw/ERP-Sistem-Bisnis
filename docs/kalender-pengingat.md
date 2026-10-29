@@ -9,7 +9,7 @@
 - Endpoint dispatcher `GET /api/cron/calendar-reminders`. Endpoint ini dilindungi dengan `Authorization: Bearer <CRON_SECRET>`.
 - Status pengingat tersimpan di database: menunggu, sedang dikirim, terkirim, gagal, atau belum dikonfigurasi. Pengulangan membuat kejadian berikutnya ketika waktu event terlewati dan dispatcher terjadwal dipanggil.
 - Jenis event meliputi seluruh jadwal dan jatuh tempo yang diminta, termasuk jadwal gaji/beban, penerimaan/pengiriman barang, stok opname, giro, hutang/piutang, PPh, nomor produksi, transaksi terjadwal, dan tukar faktur.
-- Integrasi otomatis saat ini membuat event untuk faktur penjualan terbit yang masih memiliki piutang, faktur pembelian terbit yang masih memiliki hutang, serta pesanan pembelian berstatus dipesan dengan estimasi penerimaan. Pesanan yang sudah diterima atau dibatalkan dan faktur yang lunas tidak dibuat sebagai pengingat terbuka.
+- Integrasi otomatis saat ini membuat event untuk faktur penjualan terbit yang masih memiliki piutang, faktur pembelian terbit yang masih memiliki hutang, serta pesanan pembelian berstatus dipesan dengan estimasi penerimaan. Pencatatan Beban yang masih memiliki sisa pembayaran membuat event **Jadwal Pembayaran Beban**; event dihapus ketika beban lunas. Pesanan yang sudah diterima atau dibatalkan dan faktur yang lunas tidak dibuat sebagai pengingat terbuka.
 
 ## Migrasi Supabase
 
