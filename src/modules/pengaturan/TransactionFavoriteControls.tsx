@@ -21,6 +21,10 @@ export type FavoritePayload = {
   jumlah?: number | string
   keterangan?: string
   journal_lines?: { akun_id: string; debit: number | string; kredit: number | string; keterangan: string }[]
+  hutang_akun_id?: string
+  branch_id?: string | null
+  jatuh_tempo?: string
+  beban_items?: { akun_beban_id: string; deskripsi: string; jumlah: number | string }[]
 }
 
 export type TransactionFavorite = {
@@ -43,6 +47,7 @@ const FAVORITE_LABELS: Record<string, string> = {
   kas_out: 'Kas Keluar',
   kas_transfer: 'Transfer Antar Rekening',
   journal_manual: 'Jurnal Umum',
+  expense_recording: 'Pencatatan Beban',
 }
 
 export function favoriteTypeLabel(type: string) {
