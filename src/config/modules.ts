@@ -55,6 +55,8 @@ export const MODULES: ModuleDef[] = [
     children: [
       { label: 'Daftar Akun', href: '/akuntansi/akun' },
       { label: 'Jurnal Umum', href: '/akuntansi/jurnal' },
+      { label: 'Pencatatan Beban', href: '/akuntansi/pencatatan-beban' },
+      { label: 'Pencatatan Gaji', href: '/akuntansi/pencatatan-gaji' },
       { label: 'Buku Besar', href: '/akuntansi/buku-besar' },
       { label: 'Laporan Keuangan', href: '/akuntansi/laporan' },
     ],
