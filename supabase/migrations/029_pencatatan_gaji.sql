@@ -439,7 +439,7 @@ declare
   cash_category uuid;
   payment_id uuid;
 begin
-  if cid is null or auth.uid() is null or not public.is_member(cid) then raise exception 'Tidak punya akses ke perusahaan ini'; end if;
+  if cid is null or auth.uid() is null or not public.is_admin(cid) then raise exception 'Hanya owner/admin yang bisa memproses pembayaran gaji'; end if;
   if not public.has_perm(cid,'akuntansi','create') then raise exception 'Tidak punya izin memproses pembayaran gaji'; end if;
   if not public.has_perm(cid,'kas','create') then raise exception 'Perlu izin Buat pada Kas & Bank untuk membayar gaji'; end if;
   select * into g from public.ak_pencatatan_gaji where id=gid and company_id=cid for update;
