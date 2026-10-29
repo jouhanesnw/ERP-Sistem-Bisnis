@@ -8,6 +8,9 @@ import type { SalaryItem } from '@/modules/pengaturan/salaryItems'
 
 export default async function PencatatanGajiPage() {
   const ctx = await getAppContext()
+  if (ctx.active.role === 'member') {
+    return <div className="card max-w-lg p-6"><h1 className="text-lg font-semibold">Akses ditolak</h1><p className="mt-1 text-sm text-ink/60">Data gaji termasuk informasi personalia dan hanya dapat diakses owner/admin perusahaan.</p></div>
+  }
   if (!can(ctx.perms, 'akuntansi')) return <Denied module="Akuntansi" />
 
   const sb = supabaseServer()
