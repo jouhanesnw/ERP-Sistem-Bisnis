@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, Check, ChevronDown, FileText, Loader2, Pencil, Plus, Receipt, Trash2, Wallet, X } from 'lucide-react'
+import { AlertTriangle, Check, ChevronDown, ChevronUp, FileText, Loader2, Pencil, Plus, Receipt, Trash2, Wallet, X } from 'lucide-react'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { formatCurrency } from '@/modules/pengaturan/currencies'
 import TransactionFavoriteControls, { type FavoritePayload } from '@/modules/pengaturan/TransactionFavoriteControls'
@@ -212,7 +212,7 @@ export default function PencatatanBebanManager({
                   {row.status !== 'Terbayar' && canPay && <button className="btn px-2" type="button" onClick={() => { setError(null); setPayment({ id: row.id, nomor: row.nomor, sisa: row.sisa, currency_code: row.currency_code, tanggal: isoDate() }) }} title="Catat pembayaran"><Wallet size={15} /><span className="hidden xl:inline">Bayar</span></button>}
                   {perm.edit && Number(row.dibayar) === 0 && <button className="btn px-2" type="button" onClick={() => void editExpense(row)} title="Ubah"><Pencil size={15} /></button>}
                   {perm.delete && Number(row.dibayar) === 0 && <button className="btn px-2 text-red-600" type="button" onClick={() => void deleteExpense(row)} title="Hapus"><Trash2 size={15} /></button>}
-                  <button className="btn px-2" type="button" onClick={() => setExpanded((value) => ({ ...value, [row.id]: !value[row.id] }))} aria-expanded={!!expanded[row.id]} title="Detail"><ChevronDown size={15} /></button>
+                  <button className="btn px-2" type="button" onClick={() => setExpanded((value) => ({ ...value, [row.id]: !value[row.id] }))} aria-expanded={!!expanded[row.id]} title="Detail">{expanded[row.id] ? <ChevronUp size={15} /> : <ChevronDown size={15} />}</button>
                 </div>
               </td>
             </tr>
