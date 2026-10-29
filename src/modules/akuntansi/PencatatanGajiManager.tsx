@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, Check, ChevronDown, ChevronUp, FileText, Loader2, Pencil, Plus, Receipt, Search, Trash2, Wallet, X, Calculator, Users } from 'lucide-react'
+import { Check, ChevronDown, ChevronUp, FileText, Loader2, Pencil, Plus, Receipt, Search, Trash2, Wallet, X, Calculator, Users } from 'lucide-react'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { formatCurrency } from '@/modules/pengaturan/currencies'
 import type { Employee } from '@/modules/pengaturan/employees'
