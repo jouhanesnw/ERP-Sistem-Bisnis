@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AlertTriangle, Check, ChevronDown, ChevronUp, FileText, Loader2, Pencil, Plus, Receipt, Search, Trash2, Wallet, X, Calculator, Users } from 'lucide-react'
 import { supabaseBrowser } from '@/lib/supabase/client'
@@ -262,15 +262,18 @@ function PayrollDetail({ sb, companyId, row }: { sb: any; companyId: string; row
   const [lines, setLines] = useState<any[]>([])
   const [payments, setPayments] = useState<PayrollPayment[]>([])
   const [error, setError] = useState<string | null>(null)
-  useState(() => {
+  useEffect(() => {
+    let alive = true
     void Promise.all([
       sb.from('ak_pencatatan_gaji_baris').select('id,nama_karyawan,kode_karyawan,pendapatan_bruto,pph,potongan_karyawan,gaji_dibayarkan,premi_kesehatan_perusahaan,premi_pensiun_perusahaan').eq('company_id', companyId).eq('gaji_id', row.id).order('nama_karyawan'),
       sb.from('ak_gaji_pembayaran').select('id,nomor,tanggal,jumlah,catatan,rekening_id').eq('company_id', companyId).eq('gaji_id', row.id).order('tanggal', { ascending: false }),
     ]).then(([lineResult, paymentResult]: any[]) => {
+      if (!alive) return
       if (lineResult.error) setError(lineResult.error.message); else setLines(lineResult.data ?? [])
       if (paymentResult.error) setError(paymentResult.error.message); else setPayments(paymentResult.data ?? [])
     })
-  })
+    return () => { alive = false }
+  }, [sb, companyId, row.id])
   return <div className="grid gap-4 xl:grid-cols-2">
     <div><h3 className="mb-2 font-semibold">Rincian Karyawan ({lines.length})</h3>{error && <p className="mb-2 text-sm text-red-600">{error}</p>}
       <div className="overflow-x-auto rounded-lg border border-line bg-white"><table className="w-full text-sm"><thead><tr className="border-b border-line text-ink/55"><th className="p-2 text-left">Nama Karyawan</th><th className="p-2 text-right">Pendapatan Bruto</th><th className="p-2 text-right">Pajak Penghasilan</th><th className="p-2 text-right">Gaji dibayarkan</th></tr></thead><tbody>
