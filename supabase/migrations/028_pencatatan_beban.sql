@@ -421,6 +421,136 @@ left join lateral (
 grant select on public.ak_pencatatan_beban_v to authenticated;
 grant execute on function public.ak_pencatatan_beban_simpan(jsonb), public.ak_pencatatan_beban_hapus(uuid), public.ak_beban_bayar(jsonb) to authenticated;
 
+-- Sync outstanding expense records to the existing company transaction calendar.
+create or replace function public.ak_beban_sync_calendar(p_id uuid)
+returns void language plpgsql security definer set search_path=public as $
+declare
+  b public.ak_pencatatan_beban%rowtype;
+  cal public.company_calendars%rowtype;
+  owner_id uuid;
+  paid_value numeric(16,2);
+  start_value timestamptz;
+  reminder_value timestamptz;
+  channels_value text[];
+  recipients_value jsonb;
+  description_value text;
+begin
+  select * into b from public.ak_pencatatan_beban where id=p_id;
+  if not found then
+    delete from public.company_calendar_events
+    where source_table='ak_pencatatan_beban' and source_id=p_id;
+    return;
+  end if;
+
+  select coalesce(sum(p.jumlah),0) into paid_value
+  from public.ak_beban_pembayaran p where p.company_id=b.company_id and p.beban_id=b.id;
+  if paid_value >= b.total then
+    delete from public.company_calendar_events
+    where company_id=b.company_id and source_table='ak_pencatatan_beban'
+      and source_id=b.id and event_type='Jadwal Pembayaran Beban';
+    return;
+  end if;
+
+  select c.* into cal from public.company_calendars c
+  where c.company_id=b.company_id and c.name='Jadwal Transaksi'
+  order by c.created_at asc limit 1;
+
+  if not found then
+    select created_by into owner_id from public.companies where id=b.company_id;
+    owner_id := coalesce(owner_id,b.created_by,auth.uid());
+    if owner_id is null then
+      raise exception 'Tidak dapat menentukan pemilik untuk membuat kalender pembayaran beban.';
+    end if;
+    insert into public.company_calendars(
+      company_id, calendar_type, name, description, access_all, event_edit_all, admin_all, created_by
+    ) values (
+      b.company_id, 'Kegiatan', 'Jadwal Transaksi',
+      'Kalender otomatis untuk jadwal penerimaan barang, pembayaran beban, dan jatuh tempo transaksi.',
+      true, false, false, owner_id
+    ) returning * into cal;
+  end if;
+
+  channels_value := coalesce(cal.default_reminder_channels,'{}'::text[]);
+  recipients_value := coalesce(cal.default_reminder_recipients,'{}'::jsonb);
+  start_value := (b.jatuh_tempo::timestamp + interval '9 hours') at time zone 'Asia/Jakarta';
+  reminder_value := start_value - make_interval(mins => coalesce(cal.default_reminder_minutes_before,1440));
+  description_value := 'Sisa belum dibayar: ' || b.currency_code || ' ' || to_char(greatest(b.total-paid_value,0),'FM999G999G999G990D00')
+    || case when nullif(trim(coalesce(b.catatan,'')),'') is not null then E'\nCatatan: '||b.catatan else '' end;
+
+  insert into public.company_calendar_events(
+    company_id, calendar_id, event_type, title, description, start_at, due_at, reminder_at,
+    repeat_rule, attachment_links, reminder_channels, reminder_recipients, reminder_status,
+    reminder_attempts, reminder_last_error, reminder_sent_at, repeat_processed_at,
+    source_table, source_id, source_url, created_by
+  ) values (
+    b.company_id, cal.id, 'Jadwal Pembayaran Beban', 'Jadwal Pembayaran Beban · '||b.nomor,
+    description_value, start_value, start_value, reminder_value, 'none', '[]'::jsonb,
+    channels_value, recipients_value,
+    case when cardinality(channels_value)>0 then 'pending' else 'not_configured' end,
+    0, null, null, null, 'ak_pencatatan_beban', b.id, '/akuntansi/pencatatan-beban',
+    coalesce(b.created_by,auth.uid(),owner_id)
+  )
+  on conflict (company_id, source_table, source_id, event_type)
+    where source_table is not null and source_id is not null
+  do update set
+    calendar_id=excluded.calendar_id,
+    title=excluded.title,
+    description=excluded.description,
+    start_at=excluded.start_at,
+    due_at=excluded.due_at,
+    reminder_at=excluded.reminder_at,
+    reminder_channels=excluded.reminder_channels,
+    reminder_recipients=excluded.reminder_recipients,
+    reminder_status=case
+      when public.company_calendar_events.start_at is distinct from excluded.start_at
+        or public.company_calendar_events.reminder_channels is distinct from excluded.reminder_channels
+        or public.company_calendar_events.reminder_recipients is distinct from excluded.reminder_recipients
+      then case when cardinality(excluded.reminder_channels)>0 then 'pending' else 'not_configured' end
+      else public.company_calendar_events.reminder_status
+    end,
+    reminder_attempts=case
+      when public.company_calendar_events.start_at is distinct from excluded.start_at
+        or public.company_calendar_events.reminder_channels is distinct from excluded.reminder_channels
+        or public.company_calendar_events.reminder_recipients is distinct from excluded.reminder_recipients
+      then 0 else public.company_calendar_events.reminder_attempts
+    end,
+    reminder_last_error=case
+      when public.company_calendar_events.start_at is distinct from excluded.start_at
+        or public.company_calendar_events.reminder_channels is distinct from excluded.reminder_channels
+        or public.company_calendar_events.reminder_recipients is distinct from excluded.reminder_recipients
+      then null else public.company_calendar_events.reminder_last_error
+    end,
+    reminder_sent_at=case
+      when public.company_calendar_events.start_at is distinct from excluded.start_at
+        or public.company_calendar_events.reminder_channels is distinct from excluded.reminder_channels
+        or public.company_calendar_events.reminder_recipients is distinct from excluded.reminder_recipients
+      then null else public.company_calendar_events.reminder_sent_at
+    end,
+    source_url=excluded.source_url,
+    updated_at=now();
+end $;
+revoke all on function public.ak_beban_sync_calendar(uuid) from public,anon,authenticated;
+
+create or replace function public.ak_beban_calendar_row()
+returns trigger language plpgsql security definer set search_path=public as $
+begin
+  if tg_op='DELETE' then perform public.ak_beban_sync_calendar(old.id); return old; end if;
+  perform public.ak_beban_sync_calendar(new.id); return new;
+end $;
+create trigger ak_pencatatan_beban_calendar
+after insert or update or delete on public.ak_pencatatan_beban
+for each row execute function public.ak_beban_calendar_row();
+
+create or replace function public.ak_beban_calendar_payment_row()
+returns trigger language plpgsql security definer set search_path=public as $
+begin
+  if tg_op='DELETE' then perform public.ak_beban_sync_calendar(old.beban_id); return old; end if;
+  perform public.ak_beban_sync_calendar(new.beban_id); return new;
+end $;
+create trigger ak_beban_payment_calendar
+after insert or update or delete on public.ak_beban_pembayaran
+for each row execute function public.ak_beban_calendar_payment_row();
+
 -- New tables created after audit migration 026 need their own audit triggers.
 do $audit$
 declare tbl text;
