@@ -423,7 +423,7 @@ grant execute on function public.ak_pencatatan_beban_simpan(jsonb), public.ak_pe
 
 -- Sync outstanding expense records to the existing company transaction calendar.
 create or replace function public.ak_beban_sync_calendar(p_id uuid)
-returns void language plpgsql security definer set search_path=public as $
+returns void language plpgsql security definer set search_path=public as $$
 declare
   b public.ak_pencatatan_beban%rowtype;
   cal public.company_calendars%rowtype;
@@ -528,25 +528,25 @@ begin
     end,
     source_url=excluded.source_url,
     updated_at=now();
-end $;
+end $$;
 revoke all on function public.ak_beban_sync_calendar(uuid) from public,anon,authenticated;
 
 create or replace function public.ak_beban_calendar_row()
-returns trigger language plpgsql security definer set search_path=public as $
+returns trigger language plpgsql security definer set search_path=public as $$
 begin
   if tg_op='DELETE' then perform public.ak_beban_sync_calendar(old.id); return old; end if;
   perform public.ak_beban_sync_calendar(new.id); return new;
-end $;
+end $$;
 create trigger ak_pencatatan_beban_calendar
 after insert or update or delete on public.ak_pencatatan_beban
 for each row execute function public.ak_beban_calendar_row();
 
 create or replace function public.ak_beban_calendar_payment_row()
-returns trigger language plpgsql security definer set search_path=public as $
+returns trigger language plpgsql security definer set search_path=public as $$
 begin
   if tg_op='DELETE' then perform public.ak_beban_sync_calendar(old.beban_id); return old; end if;
   perform public.ak_beban_sync_calendar(new.beban_id); return new;
-end $;
+end $$;
 create trigger ak_beban_payment_calendar
 after insert or update or delete on public.ak_beban_pembayaran
 for each row execute function public.ak_beban_calendar_payment_row();
