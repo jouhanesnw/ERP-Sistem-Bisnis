@@ -151,7 +151,7 @@ export default function Sidebar({ modules, companyName, open, onClose, onLogout,
         icon: BookOpen,
         children: [
           { label: 'Akun Perkiraan', href: '/akuntansi/akun', icon: Wallet, tone: 'blue' },
-          { label: 'Pencatatan Beban', icon: ClipboardList, tone: 'green', disabled: true },
+          { label: 'Pencatatan Beban', href: '/akuntansi/pencatatan-beban', icon: ClipboardList, tone: 'green' },
           { label: 'Pencatatan Gaji', icon: Receipt, tone: 'green', disabled: true },
           { label: 'Jurnal Umum', href: '/akuntansi/jurnal', icon: Table, tone: 'green' },
           { label: 'Monitor Anggaran', icon: Monitor, tone: 'purple', disabled: true },
