@@ -147,7 +147,7 @@ export default function TransactionFavoriteControls({ companyId, favoriteType, p
               </label>}
               {selected && (() => {
                 const chosen = rows.find((row) => row.id === selected)
-                const itemCount = chosen?.payload.items?.length ?? chosen?.payload.journal_lines?.length ?? 0
+                const itemCount = chosen?.payload.items?.length ?? chosen?.payload.beban_items?.length ?? chosen?.payload.journal_lines?.length ?? 0
                 return chosen ? <div className="rounded-lg border border-line p-3 text-sm"><p className="font-medium">{chosen.name}</p><p className="mt-1 text-ink/60">{itemCount} baris detail{chosen.payload.currency_code ? ` · ${chosen.payload.currency_code}` : ''}{chosen.payload.jumlah !== undefined ? ` · Nominal ${new Intl.NumberFormat('id-ID').format(Number(chosen.payload.jumlah))}` : ''}</p></div> : null
               })()}
             </>}
