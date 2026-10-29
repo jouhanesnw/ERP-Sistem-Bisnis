@@ -102,7 +102,7 @@ begin
     execute format('grant select on public.%I to authenticated', tbl);
     execute format('revoke insert, update, delete, truncate, references, trigger on public.%I from anon, authenticated', tbl);
     execute format(
-      'create policy %I on public.%I for select using (public.has_perm(company_id, ''akuntansi'', ''view''))',
+      'create policy %I on public.%I for select using (public.is_admin(company_id) and public.has_perm(company_id, ''akuntansi'', ''view''))',
       tbl || '_sel', tbl
     );
   end loop;
@@ -231,7 +231,7 @@ declare
   emp_id uuid;
   seen_ids uuid[] := array[]::uuid[];
 begin
-  if cid is null or actor is null or not public.is_member(cid) then raise exception 'Tidak punya akses ke perusahaan ini'; end if;
+  if cid is null or actor is null or not public.is_admin(cid) then raise exception 'Hanya owner/admin yang bisa mengakses pencatatan gaji'; end if;
   if pay_type not in ('Bulanan','Non bulanan/setahun sekali') then raise exception 'Tipe pembayaran tidak valid'; end if;
   if period_month is null or period_month not between 1 and 12 or period_year is null or period_year not between 2000 and 2200 then
     raise exception 'Periode bulan dan tahun wajib dipilih';
@@ -383,6 +383,7 @@ declare cid uuid;
 begin
   select company_id into cid from public.ak_pencatatan_gaji where id=p_id;
   if cid is null then raise exception 'Pencatatan gaji tidak ditemukan'; end if;
+  if not public.is_admin(cid) then raise exception 'Hanya owner/admin yang bisa menghapus pencatatan gaji'; end if;
   if not public.has_perm(cid,'akuntansi','delete') then raise exception 'Tidak punya izin menghapus pencatatan gaji'; end if;
   if exists(select 1 from public.ak_gaji_pembayaran where gaji_id=p_id and company_id=cid) then raise exception 'Pencatatan gaji yang sudah memiliki pembayaran tidak dapat dihapus'; end if;
   delete from public.ak_jurnal where company_id=cid and sumber_tipe='ak_gaji' and sumber_id=p_id;
@@ -471,7 +472,7 @@ create or replace function public.ak_gaji_ambil_sebelumnya(p_company uuid, p_emp
 returns jsonb language plpgsql security definer set search_path=public as $$
 declare result jsonb;
 begin
-  if p_company is null or not public.is_member(p_company) then raise exception 'Tidak punya akses ke perusahaan ini'; end if;
+  if p_company is null or not public.is_admin(p_company) then raise exception 'Hanya owner/admin yang bisa mengakses rincian gaji'; end if;
   select jsonb_build_object(
     'komponen',b.komponen,'pph',b.pph,'info_lainnya',b.info_lainnya,'nama_karyawan',b.nama_karyawan
   ) into result
