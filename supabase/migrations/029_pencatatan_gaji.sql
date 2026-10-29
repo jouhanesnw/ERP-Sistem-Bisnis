@@ -309,7 +309,7 @@ begin
     if pph_value<0 then raise exception 'PPh tidak boleh negatif'; end if;
     if not emp.subject_to_pph21 and pph_value<>0 then raise exception 'Karyawan % tidak dikenai PPh 21 dalam master karyawan',emp.full_name; end if;
     net_value:=round(gross_value-deductions_value-pph_value,2);
-    if net_value<0 then raise exception 'Total potongan dan PPh melebihi pendapatan bruto untuk %',emp.full_name; end if;
+    if net_value<=0 then raise exception 'Gaji dibayarkan setelah PPh dan potongan harus lebih dari nol untuk %',emp.full_name; end if;
     info_value:=coalesce(item->'info_lainnya','{}'::jsonb);
     if jsonb_typeof(info_value)<>'object' then raise exception 'Info lainnya harus berbentuk object'; end if;
 
